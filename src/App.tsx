@@ -2,13 +2,14 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { Home } from './views/Home'
 import { Placeholder } from './views/Placeholder'
 import { SimView } from './views/sim/SimView'
+import { ResidentView } from './views/resident/ResidentView'
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/resident" element={<Placeholder view="resident" phase={1} purpose="Daily check-in." />} />
+        <Route path="/resident" element={<ResidentView />} />
         <Route path="/sim" element={<SimView />} />
         <Route
           path="/terminal"
