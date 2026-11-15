@@ -1,6 +1,12 @@
 import { ADVICE, alertBand } from '../../lib/alerts'
-import { predictBlackout } from '../../sim/predict'
+import { formatHoursRange, predictBlackout } from '../../sim/predict'
 import type { World } from '../../sim/types'
+
+const CONFIDENCE_NOTE = {
+  high: 'Demand has climbed steadily; this window is reliable.',
+  medium: 'The trend is clear but could speed up or slow down.',
+  low: 'Early signal. Prepare anyway; the estimate will sharpen hourly.',
+} as const
 
 /**
  * Blackout warning for the resident's own level, computed ON THIS DEVICE from the level's
@@ -22,18 +28,25 @@ export function WarningBanner({ world, level }: { world: World | null; level: nu
 
   const blackout = band === 'blackout'
   const tone = blackout || band === 'critical' ? 'border-danger bg-danger/15' : 'border-warn bg-warn/10'
-  const hours = p.hoursToFailure !== null ? Math.max(1, Math.round(p.hoursToFailure)) : null
 
   return (
     <section role="alert" className={`rounded-xl border-2 p-4 ${tone}`}>
       <h2 className={`text-xl font-bold ${blackout || band === 'critical' ? 'text-danger' : 'text-warn'}`}>
         {blackout
           ? `Blackout on Level ${level}`
-          : `Blackout likely on Level ${level}${hours !== null ? ` within ~${hours} hour${hours === 1 ? '' : 's'}` : ''}`}
+          : `Blackout likely on Level ${level}${p.hoursRange ? ` in ${formatHoursRange(p.hoursRange)}` : ''}`}
       </h2>
       <p className="mt-1 text-sm">
         {blackout ? 'Power and the Directorate network are down on your level.' : `Risk ${p.riskPct}%. ${p.reason}`}
       </p>
+      {!blackout && p.hoursRange && (
+        <p className="mt-1 text-sm">
+          <span className="rounded border border-current px-1.5 py-0.5 text-xs font-semibold uppercase">
+            {p.confidence} confidence
+          </span>{' '}
+          <span className="text-hollow-300">{CONFIDENCE_NOTE[p.confidence]}</span>
+        </p>
+      )}
       <ul className="mt-3 list-disc space-y-1 pl-5 text-sm">
         {ADVICE[band].map((a) => (
           <li key={a}>{a}</li>

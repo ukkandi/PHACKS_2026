@@ -19,6 +19,8 @@ export function alertForLevel(l: LevelState, tick: number): AlertBody {
     band: alertBand(p, l.blackout),
     riskPct: p.riskPct,
     hoursToFailure: p.hoursToFailure,
+    hoursRange: p.hoursRange,
+    confidence: p.confidence,
     reason: p.reason,
     tick,
   }

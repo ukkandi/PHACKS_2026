@@ -41,6 +41,8 @@ export interface AlertBody {
   band: 'clear' | 'warning' | 'critical' | 'blackout'
   riskPct: number
   hoursToFailure: number | null
+  hoursRange: [number, number | null] | null
+  confidence: 'low' | 'medium' | 'high'
   reason: string
   tick: number
 }

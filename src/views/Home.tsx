@@ -7,7 +7,6 @@ const views = [
   { to: '/warden', name: 'Warden', who: 'Block warden', desc: 'Check in for neighbours, verify reports.' },
   { to: '/ledger', name: 'Public ledger', who: 'Everyone', desc: 'Anonymous per-level picture of the Hollow.' },
   { to: '/directorate', name: 'Directorate', who: 'Read-only', desc: 'Same aggregates as the public. No more.' },
-  { to: '/sim', name: 'Simulator', who: 'Demo operator', desc: 'Drive the scenario: surges, blackouts, outbreaks.' },
 ]
 
 export function Home() {
@@ -31,10 +30,15 @@ export function Home() {
           </li>
         ))}
       </ul>
-      <p className="mt-6 text-sm text-hollow-500">
-        Demo tip: each browser tab is a separate device. Open several <code>/resident</code> tabs plus{' '}
-        <code>/sim</code>.
-      </p>
+      <div className="mt-8 rounded-xl border-2 border-dashed border-sky-400/50 p-4 text-sm">
+        <Link to="/sim" className="font-mono font-bold text-sky-300 underline">
+          ⚙ World Simulator
+        </Link>{' '}
+        <span className="text-hollow-300">
+          — demo only, not part of Lantern. Drives the fictional world (surges, blackouts, outbreaks). Each browser tab
+          is a separate device: open several <code>/resident</code> tabs plus the simulator.
+        </span>
+      </div>
     </Shell>
   )
 }

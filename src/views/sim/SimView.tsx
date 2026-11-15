@@ -40,19 +40,38 @@ export function SimView() {
     }
   }, [relaysOn])
 
+  useEffect(() => {
+    document.title = 'World Simulator (demo only)'
+  }, [])
+
   const l = world.levels[level - 1]
   const net = isNetworkUp(world, level)
 
   return (
     <Shell
       view="simulator"
+      simulator
       aside={
         <div className="flex items-center gap-2">
-          <SimTag>operator console</SimTag>
+          <SimTag>not part of Lantern</SimTag>
           <span className="font-mono text-lamp">{tickLabel(world.tick)}</span>
         </div>
       }
     >
+      <div
+        role="note"
+        className="mb-4 rounded-xl border-2 border-dashed border-sky-400/60 bg-sky-400/5 p-4 text-sm text-sky-100"
+      >
+        <h1 className="font-mono text-base font-bold text-sky-300 uppercase">
+          World Simulator — demo only, not part of Lantern
+        </h1>
+        <p className="mt-1">
+          This console stands in for the physical world: power feeders, heat, water, illness, the Directorate's network
+          and its official bulletins, plus the phones of thousands of residents we can't put in a browser. Lantern
+          itself is <code>/resident</code>, <code>/terminal</code>, <code>/warden</code>, <code>/ledger</code> and{' '}
+          <code>/directorate</code>.
+        </p>
+      </div>
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="space-y-4">
           <Card

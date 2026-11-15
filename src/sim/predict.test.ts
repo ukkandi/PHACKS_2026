@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { predictBlackout, riskBand, slope } from './predict'
+import { formatHoursRange, predictBlackout, riskBand, slope } from './predict'
 
 describe('slope', () => {
   it('is the least-squares slope', () => {
@@ -24,6 +24,28 @@ describe('predictBlackout', () => {
     expect(p.hoursToFailure!).toBeGreaterThan(6)
     expect(p.hoursToFailure!).toBeLessThan(12)
     expect(p.riskPct).toBeGreaterThanOrEqual(50)
+  })
+
+  it('gives a range that brackets the point estimate, and high confidence for a clean trend', () => {
+    const p = predictBlackout([0.76, 0.78, 0.8, 0.82, 0.84, 0.86])
+    const [lo, hi] = p.hoursRange!
+    expect(lo).toBeLessThanOrEqual(p.hoursToFailure!)
+    expect(hi!).toBeGreaterThanOrEqual(p.hoursToFailure!)
+    expect(p.confidence).toBe('high')
+  })
+
+  it('noisy trend → lower confidence and a wider range', () => {
+    const clean = predictBlackout([0.76, 0.78, 0.8, 0.82, 0.84, 0.86])
+    const noisy = predictBlackout([0.76, 0.81, 0.77, 0.85, 0.8, 0.86])
+    expect(noisy.confidence).not.toBe('high')
+    const width = (r: [number, number | null] | null) => (r![1] ?? 99) - r![0]
+    expect(width(noisy.hoursRange)).toBeGreaterThan(width(clean.hoursRange))
+  })
+
+  it('formats ranges plainly', () => {
+    expect(formatHoursRange([6.2, 11.4])).toBe('6–12 hours')
+    expect(formatHoursRange([3.5, null])).toBe('3+ hours')
+    expect(formatHoursRange(null)).toBe('no failure projected')
   })
 
   it('close to failure → critical', () => {

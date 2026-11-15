@@ -2,6 +2,7 @@ import { Badge, Card } from '../../components/ui'
 import { timeAgo } from '../../lib/format'
 import { hopCount } from '../../lib/mesh'
 import { useFamily } from '../../stores/familyStore'
+import { formatHoursRange } from '../../sim/predict'
 
 /** Public blackout alerts that reached this device over the mesh from other levels. */
 export function MeshAlertsCard() {
@@ -25,7 +26,7 @@ export function MeshAlertsCard() {
                 <span>
                   {a.band === 'blackout'
                     ? 'Blackout in progress'
-                    : `Blackout risk ${a.riskPct}%${a.hoursToFailure !== null ? `, ~${Math.max(1, Math.round(a.hoursToFailure))}h` : ''}`}
+                    : `Blackout risk ${a.riskPct}%${a.hoursRange ? `, in ${formatHoursRange(a.hoursRange)} (${a.confidence} confidence)` : ''}`}
                 </span>
                 {familyLevels.has(a.level) && <Badge tone="lamp">family here</Badge>}
               </div>

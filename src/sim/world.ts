@@ -7,7 +7,7 @@ export const DEFAULT_SEED = 2087
 
 /** Hour-of-day demand multiplier: lights-on peak in the "evening", trough at "night". */
 export function dailyCycle(tick: number): number {
-  const hour = tick % 24
+  const hour = ((tick % 24) + 24) % 24
   return 1 + 0.03 * Math.sin(((hour - 12) / 24) * Math.PI * 2)
 }
 
@@ -57,8 +57,11 @@ export function createWorld(seed = DEFAULT_SEED): World {
       networkUp: true,
       symptomRate: symptomBaseline,
       symptomBaseline,
-      loadHistory: Array.from({ length: 6 }, () => round(powerLoad / powerCapacity + rng.noise(0.01), 4)),
-      tempHistory: Array.from({ length: 6 }, () => temperature),
+      // Two days of meter history, so devices can compare "now" with the same hour yesterday.
+      loadHistory: Array.from({ length: HISTORY_LEN }, (_, i) =>
+        round(((baseLoad + coolingLoad(temperature)) * dailyCycle(i - HISTORY_LEN)) / powerCapacity + rng.noise(0.012), 4),
+      ),
+      tempHistory: Array.from({ length: HISTORY_LEN }, () => temperature),
     })
   }
   return {

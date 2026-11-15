@@ -33,6 +33,27 @@ describe('world sim', () => {
     expect(max).toBeLessThan(50)
   })
 
+  it('the predicted window brackets the real failure time once confidence is high', () => {
+    for (const start of [0, 9, 17]) {
+      let w = createWorld()
+      for (let i = 0; i < start; i++) w = tickWorld(w)
+      w = applyAction(w, { type: 'surge', level: 38 })
+      const preds: { tick: number; lo: number; hi: number | null }[] = []
+      while (!w.levels[37].blackout && w.tick < start + 40) {
+        w = tickWorld(w)
+        const l = w.levels[37]
+        if (l.blackout) break
+        const p = predictBlackout(l.loadHistory, { temperature: l.temperature })
+        if (p.confidence === 'high' && p.hoursRange) preds.push({ tick: w.tick, lo: p.hoursRange[0], hi: p.hoursRange[1] })
+      }
+      const failAt = w.tick
+      expect(preds.length).toBeGreaterThan(0)
+      // Allow 1h slack either side for hourly ticks.
+      const hits = preds.filter((p) => failAt - p.tick >= Math.floor(p.lo) - 1 && (p.hi === null || failAt - p.tick <= Math.ceil(p.hi) + 1))
+      expect(hits.length / preds.length).toBeGreaterThanOrEqual(0.8)
+    }
+  })
+
   it('a surge on L38 is predicted hours ahead, then trips the feeder and drops the network', () => {
     let w = applyAction(createWorld(), { type: 'surge', level: 38 })
     let warnedAt: number | null = null

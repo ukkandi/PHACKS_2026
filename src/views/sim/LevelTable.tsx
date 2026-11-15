@@ -1,6 +1,6 @@
 import { Badge } from '../../components/ui'
 import { bandTone, millions, pct } from '../../lib/format'
-import { predictBlackout, riskBand } from '../../sim/predict'
+import { formatHoursRange, predictBlackout, riskBand } from '../../sim/predict'
 import type { World } from '../../sim/types'
 import { isNetworkUp } from '../../sim/world'
 
@@ -72,7 +72,7 @@ export function LevelTable({
                 </td>
                 <td className="px-2 py-1">
                   <Badge tone={bandTone[riskBand(p.riskPct)]}>
-                    {p.riskPct}%{p.hoursToFailure !== null && p.hoursToFailure > 0 ? ` · ~${Math.round(p.hoursToFailure)}h` : ''}
+                    {p.riskPct}%{p.hoursRange && !l.blackout ? ` · ${formatHoursRange(p.hoursRange)}` : ''}
                   </Badge>
                 </td>
                 <td className="px-2 py-1">{net ? <span className="text-ok">up</span> : <span className="text-danger">down</span>}</td>

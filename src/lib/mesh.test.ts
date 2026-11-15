@@ -46,7 +46,7 @@ describe('MeshNode flooding (real BroadcastChannel)', () => {
     const far = makeNode({ nodeId: 'far', level: 10, netUp: false }, [])
     void far
 
-    src.send({ kind: 'alert', level: 38, band: 'blackout', riskPct: 100, hoursToFailure: 0, reason: 'x', tick: 1 })
+    src.send({ kind: 'alert', level: 38, band: 'blackout', riskPct: 100, hoursToFailure: 0, hoursRange: [0, 0], confidence: 'high', reason: 'x', tick: 1 })
     await new Promise((r) => setTimeout(r, 800))
 
     expect(got).toHaveLength(1)
