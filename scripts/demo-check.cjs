@@ -6,6 +6,7 @@ const URL = process.env.URL || 'http://localhost:5173'
 let fails = 0
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${extra ? '  — ' + extra : ''}`); if (!ok) fails++ }
 const txt = async (loc) => (await loc.innerText()).replace(/\s+/g, ' ')
+const has = (text, needle) => text.toLowerCase().includes(needle.toLowerCase())
 ;(async () => {
   const b = await chromium.launch()
   const ctx = await b.newContext({ viewport: { width: 1300, height: 1000 } })
@@ -27,7 +28,7 @@ const txt = async (loc) => (await loc.innerText()).replace(/\s+/g, ' ')
   for (const name of ['Mara', 'Teo', 'Ilan']) await res[name].getByRole('button', { name: 'Check in', exact: true }).click()
   await res.Ilan.waitForTimeout(1500)
   const fam = await txt(res.Ilan.locator('section', { hasText: 'Family · ORIN-7' }))
-  check('Step 2: Ilan sees Mara and Teo okay', /Mara .*Okay today/.test(fam) && /Teo .*Okay today/.test(fam))
+  check('Step 2: Ilan sees Mara and Teo okay', /Mara .*Okay today/i.test(fam) && /Teo .*Okay today/i.test(fam))
 
   // Step 3: surge → warning hours ahead
   await sim.getByRole('button', { name: 'Power surge' }).click()
@@ -37,14 +38,14 @@ const txt = async (loc) => (await loc.innerText()).replace(/\s+/g, ' ')
   check('Step 3: Mara gets a blackout warning with a time window', /Blackout likely on Level 38 in \d+–\d+ hours/.test(banner), banner.slice(0, 90))
   check('Step 3: warning shows a confidence label', /(low|medium|high) confidence/i.test(banner))
   await res.Ilan.waitForTimeout(600)
-  check('Step 3: Ilan sees the L38 alert via the mesh', (await txt(res.Ilan.locator('section', { hasText: 'Family · ORIN-7' }))).includes('L38 blackout'))
+  check('Step 3: Ilan sees the L38 alert via the mesh', has(await txt(res.Ilan.locator('section', { hasText: 'Family · ORIN-7' })), 'L38 blackout'))
 
   // Step 4: blackout → messages over peer hops
   let hoursToTrip = 0
   for (let h = 1; h <= 20; h++) { await step(1); if (await res.Mara.getByText('Blackout on Level 38').count()) { hoursToTrip = h; break } }
   check('Step 4: blackout hits after the warning', hoursToTrip > 0, `${hoursToTrip}h after warning`)
   await res.Mara.waitForTimeout(500)
-  check('Step 4: Mara is mesh-only', (await txt(res.Mara.locator('header').first())).includes('Mesh only'))
+  check('Step 4: Mara is mesh-only', has(await txt(res.Mara.locator('header').first()), 'Mesh only'))
   await res.Mara.getByRole('button', { name: 'Power is out here.' }).click()
   await res.Ilan.waitForTimeout(1500)
   const msgs = await txt(res.Ilan.locator('section', { hasText: 'Family messages' }))
@@ -79,7 +80,7 @@ const txt = async (loc) => (await loc.innerText()).replace(/\s+/g, ' ')
   check('Step 7: terminal confirms', (await txt(terminal.locator('main'))).includes('Your block warden has been told'))
   await warden.waitForTimeout(1200)
   const top = await txt(warden.locator('li', { hasText: '38-' }).first())
-  check('Step 7: warden triage puts Mrs. Okafor first', /Mrs\. Okafor.*Needs help.*breathing trouble/.test(top))
+  check('Step 7: warden triage puts Mrs. Okafor first', /Mrs\. Okafor.*Needs help.*breathing trouble/i.test(top))
   const brandt = warden.locator('li', { hasText: 'Mr. Brandt' })
   await brandt.getByRole('button', { name: 'Check in for them' }).click()
   await brandt.getByRole('button', { name: 'Submit check-in' }).click()
@@ -87,7 +88,7 @@ const txt = async (loc) => (await loc.innerText()).replace(/\s+/g, ' ')
   check('Step 7: warden checks in Mr. Brandt', (await txt(warden.locator('li', { hasText: 'Mr. Brandt' }))).includes('via warden'))
   await warden.getByRole('button', { name: 'Confirm outbreak' }).click()
   await ledger.waitForTimeout(800)
-  check('Step 7: ledger shows warden confirmation', /Level 38 OUTBREAK.*confirmed by warden W-38/.test(await txt(ledger.locator('section', { hasText: 'Outbreak watch' }).first())))
+  check('Step 7: ledger shows warden confirmation', /Level 38 OUTBREAK.*confirmed by warden W-38/i.test(await txt(ledger.locator('section', { hasText: 'Outbreak watch' }).first())))
   await ledger.getByRole('button', { name: 'L38', exact: true }).click()
   const det = await txt(ledger.locator('tr', { hasText: 'Sources' }))
   check('Step 7: L38 counts include terminal + warden reports', /via terminal/.test(det) && /via warden/.test(det), (det.match(/Sources:[^.]*/) || [''])[0])

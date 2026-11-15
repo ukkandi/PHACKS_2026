@@ -2,42 +2,56 @@
 
 /* Self-hosted fonts: an offline-first app must render without the network. */
 @import "@fontsource/inter/latin-400.css";
-@import "@fontsource/inter/latin-500.css";
 @import "@fontsource/inter/latin-600.css";
-@import "@fontsource/inter/latin-700.css";
-@import "@fontsource/space-grotesk/latin-500.css";
-@import "@fontsource/space-grotesk/latin-700.css";
 @import "@fontsource/ibm-plex-mono/latin-400.css";
 @import "@fontsource/ibm-plex-mono/latin-500.css";
+@import "@fontsource/ibm-plex-mono/latin-600.css";
+@import "@fontsource/ibm-plex-mono/latin-700.css";
 
 @theme {
-  /* Lantern brand (matches the pitch deck) */
+  /* Palette (unchanged) */
   --color-hollow-950: #14110f; /* warm near-black: page */
-  --color-hollow-900: #1d1915; /* cards */
-  --color-hollow-800: #2a241f; /* inputs, hover */
-  --color-hollow-700: #3b332c; /* borders */
-  --color-hollow-500: #a89e8f; /* muted text, ≥5:1 on cards */
+  --color-hollow-900: #1d1915; /* panels */
+  --color-hollow-800: #2a241f; /* controls */
+  --color-hollow-700: #3b332c; /* rules / borders */
+  --color-hollow-500: #a89e8f; /* muted text, ≥5:1 on panels */
   --color-hollow-300: #d3c8b6; /* secondary text */
-  --color-cream: #f2ebdd; /* body text */
-  --color-lamp: #f2a33a; /* lantern amber */
+  --color-cream: #f2ebdd; /* text */
+  --color-lamp: #f2a33a; /* amber: primary action, signage */
   --color-data: #5fa8d3; /* numbers & charts */
-  --color-ok: #8cc084;
-  --color-warn: #f5c451;
-  --color-danger: #e86a5c;
-  /* World Simulator / demo tooling: deliberately NOT a Lantern brand colour. */
+  --color-ok: #8cc084; /* NORMAL */
+  --color-warn: #f5c451; /* WATCH */
+  --color-danger: #e86a5c; /* DANGER */
+  /* World Simulator / demo tooling: deliberately NOT a Lantern colour. */
   --color-sim: #b9a6e0;
 
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
+/*
+ * Industrial equipment, not an app store: square corners everywhere, no shadows or glows.
+ * (One rule instead of touching every rounded-* utility.)
+ */
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
 @layer base {
+  /* Tunnel-signage headings and every number/label: monospace. */
   h1,
   h2,
-  h3 {
-    font-family: var(--font-display);
-    letter-spacing: -0.01em;
+  h3,
+  button,
+  label,
+  legend,
+  th,
+  output,
+  table {
+    font-family: var(--font-mono);
   }
 }
 
@@ -53,6 +67,28 @@ body {
   color: var(--color-cream);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Hazard stripes: ONLY for danger states. */
+.hazard {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--color-danger) 0 10px,
+    var(--color-hollow-950) 10px 20px
+  );
+}
+
+/* Blackout mode: dim amber-on-black, minimum light. */
+.blackout-mode {
+  --color-cream: #e0963a;
+  --color-hollow-300: #c08436;
+  --color-hollow-500: #a87532;
+  --color-hollow-900: #0d0b09;
+  --color-hollow-800: #17130f;
+  --color-hollow-700: #3a2a18;
+  --color-hollow-950: #000000;
+  background: #000;
+  color: var(--color-cream);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -75,34 +111,11 @@ body {
   background: var(--color-lamp);
   color: var(--color-hollow-950);
   padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
   font-weight: 600;
 }
 
-/* Strong, visible keyboard focus everywhere (accessibility principle #5). */
+/* Strong, visible keyboard focus everywhere. */
 :focus-visible {
   outline: 3px solid var(--color-lamp);
   outline-offset: 2px;
-}
-
-/* Soft lantern glow behind the logo on the landing page. */
-.lantern-glow {
-  background: radial-gradient(closest-side, rgb(242 163 58 / 0.35), rgb(242 163 58 / 0.08) 60%, transparent 75%);
-}
-@media (prefers-reduced-motion: no-preference) {
-  .lantern-flicker {
-    animation: flicker 4s ease-in-out infinite;
-  }
-  @keyframes flicker {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    45% {
-      opacity: 0.86;
-    }
-    55% {
-      opacity: 0.95;
-    }
-  }
 }
