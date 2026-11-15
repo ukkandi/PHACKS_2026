@@ -24,15 +24,19 @@ Every push to `main` redeploys. All demo tabs must be on the same site (same ori
 
 | Route | Who | What |
 |---|---|---|
-| `/resident` | Resident's phone | Daily check-in, family status + messages (encrypted), blackout warnings, own sleep/mood trends |
+| `/` and `/demo` | **Demo launcher — demo only** | Plain list: Reset & set up demo, open every demo tab |
+| `/resident` | Resident's phone | Status screen (power/air/water/heat), giant I'M OKAY, family, messages; dim blackout mode |
 | `/terminal?level=38` | Shared level terminal | Big-button check-in by unit number, no account, clears itself |
-| `/warden?level=38` | Block warden | Care triage, check in people without devices, verify the ledger |
-| `/ledger` | Everyone | Anonymous per-level numbers vs the Directorate's official ones; power allocation |
+| `/warden?level=38` | Block warden | Who to visit first, check in people without devices, verify the ledger |
+| `/ledger` | Everyone | Notice board of all 40 levels vs the Directorate's official figures; power allocation |
 | `/directorate` | Directorate | Exactly the public ledger, read-only |
 | `/sim` | **World Simulator — demo only, not part of Lantern** | Drives the fictional world |
-| `/demo` | **Demo launcher — demo only** | Reset & set up demo; opens every demo tab |
 
 Every browser tab is a separate device (own id, own IndexedDB). `?device=<name>` on `/resident` pins an identity.
+
+**Interface language:** every screen leads with short states — **NORMAL / WATCH / DANGER** (green / yellow / red; hazard
+stripes only on DANGER). Explanations sit behind the small **?** buttons. Small **●** trust chips show what's actually true
+right now ("Offline OK", "Mesh only · 6 nearby", "heard 3 min ago · via 2 hops", "based on 291 reports", "stored on this device").
 
 ## Demo script (click by click)
 
@@ -41,58 +45,60 @@ Total time about 6–7 minutes. The simulator clock stays **Paused** throughout;
 ### Before you start (setup, under 1 min)
 Use one browser window.
 
-1. Open **`/demo`** (the **Demo launcher**, demo-only; it's also linked in the home page footer).
+1. Open the site root **`/`** (the demo launcher; `/demo` is the same page).
 2. Click **Reset & set up demo** → OK. This wipes all demo data in every open tab and puts the world at **Day 1, 00:00**, paused, with Level 38 selected.
-3. Click **Open all 8 tabs**. If your browser blocks pop-ups, allow them for the site and click again, or click the 8 numbered links one by one. **Order doesn't matter**: each tab catches up from the mesh when it opens.
-   - Tabs: Public ledger · World Simulator · Mara (L38) · Teo (L36) · Ilan (L12) · Level 38 terminal · Warden L38 · Directorate.
+3. Click **Open all 8 tabs**. If your browser blocks pop-ups, allow them for the site and click again, or click the 8 numbered rows one by one. **Order doesn't matter**: each tab catches up from the mesh when it opens.
+   - Tabs: Public ledger · World Simulator · Mara (L38) · Teo (L36) · Ilan (L12) · L38 terminal · Warden L38 · Directorate.
    - The three resident tabs set themselves up as Mara, Teo and Ilan automatically.
-4. **Check:** the ledger shows **40 / 40** levels reporting and "voted by 40 of 40 levels" under Power reserve, and no outbreaks.
+4. **Check:** the ledger's status line reads **0 DANGER · 0 WATCH · 40 NORMAL** (an occasional single WATCH is normal noise), with **● 40 / 40 levels reporting** and **voted by 40 of 40 levels** under Power reserve.
 
-To restart at any point: **World Simulator → Reset & set up demo** (or the same button on `/demo`). Every open tab reloads into the starting state.
+To restart at any point: **World Simulator → Reset & set up demo** (or the same button on `/`). Every open tab reloads into the starting state.
 
 ### 1. Everyone checks in
-- In Mara's, Teo's and Ilan's tabs: click **Check in**. (Optionally set mood, sleep or symptoms first.)
-- **Show:** Ilan's **Family · ORIN-7** panel shows Mara and Teo as **Okay today**, with the route each status took (`1 hop: L38 ⇢net L12`).
+- In Mara's, Teo's and Ilan's tabs: tap the big **I'M OKAY**, then **SEND NOW ▸**. (Or tap through the four one-tap details — MOOD, SLEEP, SYMPTOMS, WATER — the last tap sends.)
+- **Show:** the tile row (**POWER ON · AIR GOOD · WATER SAFE · HEAT HOT** on deep L38) and the trust chips (**● STORED ON THIS DEVICE · ● LEDGER: COUNTS ONLY**).
+- **Show:** Ilan's **FAMILY · ORIN-7** list shows Mara and Teo as **■ OKAY TODAY**, each with **● HEARD … · VIA 1 HOP · L38 ⇢NET L12**.
 
 ### 2. Blackout warning, hours ahead
-- **World Simulator:** click **Power surge**, then **Step +1h** about 4 times, until Mara's tab turns amber.
-- **Show Mara:** "**Blackout likely on Level 38 in 8–16 hours**", a **medium confidence** label, and advice. The banner says the warning was predicted on her phone from the level meter; the Directorate announced nothing.
-- **Show Ilan:** a **L38 blackout warning** badge next to Mara, and the alert under **Alerts from other levels**. It reached him over the mesh.
+- **World Simulator:** click **Power surge**, then **Step +1h** about 4 times, until Mara's tab shows a yellow strip.
+- **Show Mara:** **BLACKOUT RISK · 8–16 HOURS · MEDIUM CONFIDENCE**, and the POWER tile at **AT RISK**. Tap **?** for the reason and what to do (predicted on her phone from the level meter; the Directorate announced nothing).
+- **Show Ilan:** **L38 BLACKOUT RISK** next to Mara in his family list, and under **OTHER LEVELS**. It reached him over the mesh.
 - Optional: one or two more **Step +1h** clicks show the window tighten (e.g. 5–9 hours, high confidence).
 
 ### 3. Blackout: messages still get through
-- **World Simulator:** keep clicking **Step +1h** (about 9 times) until Mara's banner turns red: "**Blackout on Level 38**". The event log says the feeder tripped.
-- **Show Mara:** her header now reads **Mesh only · N devices in radio range**.
-- **Mara:** click **Power is out here.**
-- **Show Ilan:** the message arrives with its route, `2 hops: L38 ⇢radio L36 ⇢net L12`.
-- Optional (dramatic): **World Simulator → Directorate network: shut ALL down**, then **Mara → I'm safe.** It reaches Ilan after about 13 radio hops (`L38 ⇢radio L36 ⇢radio L34 …`). Click **Restore Directorate network (all)** afterwards.
+- **World Simulator:** keep clicking **Step +1h** (about 9 times) until Mara's phone switches to **blackout mode**: dim amber on black, hazard-striped **BLACKOUT · LEVEL 38**, only status, family and messages.
+- **Show Mara:** her top bar reads **● MESH ONLY · N NEARBY**.
+- **Mara:** tap **POWER OUT**.
+- **Show Ilan:** "Power is out here." arrives with **VIA 2 HOPS · L38 ⇢RADIO L36 ⇢NET L12**.
+- Optional (dramatic): **World Simulator → Directorate network: shut ALL down**, then **Mara → I'M SAFE**. It reaches Ilan after about 13 radio hops. Click **Restore Directorate network (all)** afterwards.
 
 ### 4. Outbreak vs the official number
 - **World Simulator:** click **Symptom spike, levels 34–40**, then **Step +1h** 8 times.
-- **Show Ledger → Outbreak watch:** **Level 38 OUTBREAK** shows a Lantern figure of about **22%** with symptoms, "**based on ~291 reports**", next to a **Directorate official** figure of about **6.4%**, and the line "The official figure is 3.4× lower…". All seven spiked levels (34–40) are marked OUTBREAK and no other level is (a stray "watch" elsewhere is normal noise).
-- Scroll to **The Hollow, level by level**: every row says how many reports it's based on. Click **L38** to see the sources.
+- **Show Ledger:** the status line jumps to **7 DANGER**. On the board, rows **L34–L40** read **DANGER** with hazard markers and **ILLNESS ~20% ▲** next to an **OFFICIAL ~6%**.
+- **Show Ledger → OUTBREAK WATCH:** **▲ LEVEL 38 · OUTBREAK — LANTERN ~22% · OFFICIAL ~6.4% · GAP ~3.4× LOWER · ● BASED ON ~291 REPORTS**.
+- Click **L38** on the board for its sources and reasoning.
 
 ### 5. Allocation: recommendation vs what the Directorate did
-- **Show Ledger → Power reserve · 14 MW:**
-  - **Lantern recommends** ~3.9 MW to **Level 38 air pumps** first, with the reason in plain words and "Priority #1 (air)".
-  - **Directorate actually did:** 2 MW for L38 corridor lighting (acknowledged 4h late, as "planned maintenance"), and the rest to **Levels 1–3 administrative districts**.
-  - A low "% of the reserve went where the community's priorities say".
-  - Above them: **Community-set priorities · voted by 40 of 40 levels** (air > water > cooling > light, with Borda points).
-- Optional: **World Simulator → Directorate powers L38 air pumps**. The ledger shows "Level 38 air pumps (emergency line)" and the match % goes up.
+- **Show Ledger → POWER RESERVE · 14 MW:**
+  - Priorities **1 AIR › 2 WATER › 3 COOLING › 4 LIGHT · ● VOTED BY 40 OF 40 LEVELS**.
+  - **LANTERN RECOMMENDS:** ~4 MW → **Level 38 air pumps** first (tap its **?** for the reason).
+  - **DIRECTORATE DID:** 2 MW → L38 corridor lighting (acknowledged 4 h late) and the rest → **Levels 1–3 administrative districts** (in red).
+  - **▲ ~10% MATCHED** in the panel header.
+- Optional: **World Simulator → Directorate powers L38 air pumps**. The Directorate column shows "Level 38 air pumps (emergency line)" and the match % goes up.
 
 ### 6. Terminal and warden: people without phones
-- **Terminal tab:** tap **2 2 1** → **Next** → **I need help** → **Low** → **Under 5 hours** → **Breathing** → **Next** → **Yes**. The screen says the warden has been told, then clears itself after 8 seconds.
-- **Warden tab:** **Mrs. Okafor · 38-221** is top of **Who to visit first**: "asked for help · breathing trouble · vulnerable".
-- **Warden:** on **Mr. Brandt** click **Check in for them** → **Submit check-in**. He now shows "via warden".
-- **Warden:** in **Verify the ledger · Level 38**, click **Confirm outbreak**.
-- **Show Ledger:** Level 38 now carries "**✓ confirmed by warden W-38-WAR**". Click **L38** in the level table: "Sources: N via level phones, 1 via terminal, 1 via warden".
+- **Terminal tab:** tap **2 2 1** → **NEXT** → **I NEED HELP** → **LOW** → **UNDER 5 H** → **BREATHING** → **NEXT** → **YES**. The screen shows **▲ WARDEN TOLD**, then clears itself after 8 seconds.
+- **Warden tab:** status line **▲ 1 NEED HELP**; **MRS. OKAFOR · 38-221** is top of **VISIT FIRST**: **▲ NEEDS HELP — ASKED FOR HELP · BREATHING TROUBLE · VULNERABLE**.
+- **Warden:** on **MR. BRANDT** tap **CHECK IN** → **SEND**. He now shows **● LAST … VIA WARDEN**.
+- **Warden:** in **VERIFY LEDGER · L38**, tap **CONFIRM OUTBREAK**.
+- **Show Ledger:** Level 38 in OUTBREAK WATCH now carries **✓ CONFIRMED BY WARDEN W-38-WAR**. Click **L38** on the board: "Sources: N via level phones, 1 via terminal, 1 via warden".
 
 ### 7. Trust: a fake flood is held back
 - **World Simulator:** set Target level to **Level 5** and click **Rogue device: inject 300 fake reports on L5**.
-- **Show Ledger → Held back (unverified):** the 300 fake reports are *not* counted, and the reason is given. No false outbreak appears.
+- **Show Ledger → HELD BACK:** **▲ L5 · 300 REPORTS · HELD, NOT COUNTED** (reason behind **?**). The L5 row stays NORMAL.
 
 ### 8. The Directorate's view
-- Open **`/directorate`**. It's the same numbers, read-only, with a note that Lantern holds no individual data to hand over.
+- Open the **Directorate** tab: **DIRECTORATE ACCESS · READ-ONLY**, the same board, with **● SAME DATA AS PUBLIC · ● NO INDIVIDUAL DATA**.
 
 ## What is real vs simulated
 

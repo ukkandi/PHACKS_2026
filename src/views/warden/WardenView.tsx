@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Shell } from '../../components/Shell'
-import { Badge, Button, Card, type BadgeTone } from '../../components/ui'
+import { Button, Card, Explain, Sign, StateTag, Trust } from '../../components/ui'
+import type { State } from '../../lib/status'
 import { getDeviceId } from '../../lib/device'
 import { triage, type TriageRow } from '../../lib/triage'
 import { useWorld } from '../../lib/worldFeed'
@@ -12,11 +13,11 @@ import { useLedgerView } from '../ledger/useLedgerView'
 import { WarningBanner } from '../resident/WarningBanner'
 import { OnBehalfForm } from './OnBehalfForm'
 
-const STATUS: Record<TriageRow['status'], { label: string; tone: BadgeTone }> = {
-  'needs-help': { label: 'Needs help', tone: 'danger' },
-  unwell: { label: 'Unwell', tone: 'warn' },
-  missing: { label: 'Not checked in', tone: 'warn' },
-  okay: { label: 'Okay', tone: 'ok' },
+const STATUS: Record<TriageRow['status'], { label: string; state: State }> = {
+  'needs-help': { label: 'Needs help', state: 'danger' },
+  unwell: { label: 'Unwell', state: 'watch' },
+  missing: { label: 'No check-in', state: 'watch' },
+  okay: { label: 'Okay', state: 'normal' },
 }
 
 export function WardenView() {
@@ -26,7 +27,9 @@ export function WardenView() {
   if (!valid) {
     return (
       <Shell view="warden">
-        <h1 className="mb-4 text-2xl font-bold">Which level's block do you look after?</h1>
+        <div className="mb-3">
+          <Sign sub="Which block do you look after?">Select level</Sign>
+        </div>
         <div className="grid grid-cols-5 gap-2 sm:grid-cols-8">
           {Array.from({ length: LEVEL_COUNT }, (_, i) => i + 1).map((n) => (
             <Button key={n} className="min-h-14 text-lg" onClick={() => setParams({ level: String(n) })}>
@@ -54,48 +57,66 @@ function Warden({ level }: { level: number }) {
   }, [level, start, stop])
 
   const net = world ? isNetworkUp(world, level) : true
+  const urgent = rows.filter((r) => r.status === 'needs-help').length
+  const watch = rows.filter((r) => r.status === 'unwell' || r.status === 'missing').length
 
   return (
     <Shell
-      view={`warden · Level ${level}`}
+      view={`warden · L${level}`}
       aside={
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <Badge tone="lamp">Warden {badge || '…'}</Badge>
-          <Badge tone={net ? 'ok' : 'warn'}>{net ? 'Directorate net + mesh' : 'Mesh only'}</Badge>
-          <span className="text-xs text-hollow-500">relayed {relayed} packets for others</span>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <Trust tone={net ? 'ok' : 'warn'}>{net ? 'Net + mesh' : 'Mesh only'}</Trust>
+          <Trust>Relayed {relayed}</Trust>
           {world && <span className="font-mono text-xs text-lamp">{tickLabel(world.tick)}</span>}
         </div>
       }
     >
-      <div className="space-y-4">
+      <div className="space-y-3">
+        <Sign sub={`Warden ${badge || '…'} · block rounds`}>Level {level} · warden</Sign>
         <WarningBanner world={world} level={level} />
-        <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
-          <Card title="Who to visit first" right={<span className="text-xs text-hollow-500">care triage · sealed to wardens</span>}>
-            {!running && <p className="text-sm text-hollow-500">Opening…</p>}
-            <ul className="divide-y divide-hollow-800">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-2 border-hollow-700 bg-hollow-900 px-3 py-2">
+          <StateTag state="danger" className="text-base">{urgent} need help</StateTag>
+          <StateTag state="watch" className="text-base">{watch} to check</StateTag>
+          <Trust>Care notes sealed to wardens</Trust>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-[3fr_2fr]">
+          <Card
+            title="Visit first"
+            help="Ranked by: asked for help, breathing trouble, fever, very low mood, vulnerable (elderly, oxygen, children), and nobody checking in for a day. Notes come sealed from terminals and phones on your block; only warden devices can read them."
+          >
+            {!running && <p className="font-mono text-xs uppercase">Opening…</p>}
+            <ul className="divide-y-2 divide-hollow-800">
               {rows.map((r) => {
                 const st = STATUS[r.status]
                 return (
-                  <li key={r.unit} className="py-3">
+                  <li key={r.unit} className="py-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <strong>{r.name}</strong> <span className="text-hollow-500">· {r.unit}</span>
-                        {r.roster?.age !== undefined && <span className="text-hollow-500"> · {r.roster.age}</span>}
-                        {r.roster && !r.roster.hasDevice && <span className="text-hollow-500"> · no device</span>}
-                      </div>
-                      <Badge tone={st.tone}>{st.label}</Badge>
+                      <span className="font-mono text-sm font-bold uppercase">
+                        {r.name} <span className="font-normal text-hollow-500">· {r.unit}</span>
+                        {r.roster?.age !== undefined && <span className="font-normal text-hollow-500"> · {r.roster.age}</span>}
+                      </span>
+                      <StateTag state={st.state} className="text-sm">
+                        {st.label}
+                      </StateTag>
                     </div>
-                    {r.reasons.length > 0 && <div className="mt-1 text-sm text-warn">{r.reasons.join(' · ')}</div>}
-                    <div className="mt-1 text-xs text-hollow-500">
-                      {r.last ? `Last check-in ${tickLabel(r.last.tick)} via ${r.last.via}` : 'No check-in received'}
-                      {r.roster?.visitedTick !== undefined && ` · visited ${tickLabel(r.roster.visitedTick)}`}
-                      {r.roster?.note && ` · ${r.roster.note}`}
+                    {r.reasons.length > 0 && (
+                      <div className="mt-0.5 font-mono text-xs font-bold tracking-wider text-warn uppercase">{r.reasons.join(' · ')}</div>
+                    )}
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-4">
+                      <Trust tone={r.last ? 'ok' : 'warn'}>
+                        {r.last ? `Last ${tickLabel(r.last.tick)} via ${r.last.via}` : 'No check-in received'}
+                      </Trust>
+                      {r.roster && !r.roster.hasDevice && <Trust tone="muted">No device</Trust>}
+                      {r.roster?.visitedTick !== undefined && <Trust>Visited {tickLabel(r.roster.visitedTick)}</Trust>}
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Button onClick={() => setOpen(open === r.unit ? null : r.unit)}>Check in for them</Button>
-                      <Button tone="ghost" onClick={() => void markVisited(r.unit)}>
-                        Mark visited
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <Button className="min-h-12" onClick={() => setOpen(open === r.unit ? null : r.unit)}>
+                        Check in
                       </Button>
+                      <Button className="min-h-12" tone="ghost" onClick={() => void markVisited(r.unit)}>
+                        Visited
+                      </Button>
+                      {r.roster?.note && <Explain label={`Note on ${r.name}`}>{r.roster.note}</Explain>}
                     </div>
                     {open === r.unit && (
                       <OnBehalfForm
@@ -112,7 +133,7 @@ function Warden({ level }: { level: number }) {
               })}
             </ul>
           </Card>
-          <div className="space-y-4">
+          <div className="space-y-3">
             <VerifyCard level={level} />
             <AddPersonCard level={level} />
           </div>
@@ -129,57 +150,64 @@ function VerifyCard({ level }: { level: number }) {
   const [sent, setSent] = useState<string | null>(null)
   const act = (claim: 'outbreak' | 'water' | 'reports', confirmed: boolean, note: string) => {
     verify(claim, confirmed, note)
-    setSent(`${confirmed ? 'Confirmed' : 'Disputed'} ${claim} on Level ${level}. The ledger will show your badge.`)
+    setSent(`${confirmed ? 'Confirmed' : 'Disputed'} ${claim} · L${level}`)
   }
+  const o = l.outbreak.status
   return (
-    <Card title={`Verify the ledger · Level ${level}`}>
-      <p className="mb-3 text-sm text-hollow-300">
-        What the public ledger currently shows for your block. Vouch for it — or dispute it — from what you see on your
-        rounds.
-      </p>
-      <ul className="space-y-3 text-sm">
+    <Card
+      title={`Verify ledger · L${level}`}
+      help="What the public ledger shows for your block. Vouch for it — or dispute it — from what you see on your rounds. The ledger shows your warden badge next to the figure."
+    >
+      <ul className="space-y-3">
         <li>
-          <div>
-            Symptoms: <strong>{(l.outbreak.rate * 100).toFixed(1)}%</strong> of {l.reports} reports —{' '}
-            <Badge tone={l.outbreak.status === 'outbreak' ? 'danger' : l.outbreak.status === 'watch' ? 'warn' : 'muted'}>
-              {l.outbreak.status}
-            </Badge>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <StateTag state={o === 'outbreak' ? 'danger' : o === 'watch' ? 'watch' : 'normal'}>
+              Illness {(l.outbreak.rate * 100).toFixed(1)}% · {o}
+            </StateTag>
+            <Trust>{l.reports} reports</Trust>
           </div>
-          <div className="mt-1 flex flex-wrap gap-2">
-            <Button onClick={() => act('outbreak', true, 'Seen many sick neighbours on rounds.')}>Confirm outbreak</Button>
-            <Button tone="ghost" onClick={() => act('outbreak', false, 'Not seeing illness on rounds.')}>
+          <div className="mt-1 grid grid-cols-2 gap-2">
+            <Button className="min-h-12" onClick={() => act('outbreak', true, 'Seen many sick neighbours on rounds.')}>
+              Confirm outbreak
+            </Button>
+            <Button className="min-h-12" tone="ghost" onClick={() => act('outbreak', false, 'Not seeing illness on rounds.')}>
               Dispute
             </Button>
           </div>
         </li>
         <li>
-          <div>
-            Bad water: <strong>{Math.round(l.waterBadShare * 100)}%</strong> of reports
-          </div>
-          <div className="mt-1 flex flex-wrap gap-2">
-            <Button onClick={() => act('water', true, 'Tap water discoloured on this block.')}>Confirm water problem</Button>
-            <Button tone="ghost" onClick={() => act('water', false, 'Water looks and smells fine.')}>
+          <StateTag state={l.waterBadShare >= 0.2 ? 'danger' : l.waterBadShare >= 0.1 ? 'watch' : 'normal'}>
+            Bad water {Math.round(l.waterBadShare * 100)}%
+          </StateTag>
+          <div className="mt-1 grid grid-cols-2 gap-2">
+            <Button className="min-h-12" onClick={() => act('water', true, 'Tap water discoloured on this block.')}>
+              Confirm water
+            </Button>
+            <Button className="min-h-12" tone="ghost" onClick={() => act('water', false, 'Water looks and smells fine.')}>
               Dispute
             </Button>
           </div>
         </li>
         {l.heldBack.length > 0 && (
-          <li className="rounded-lg border border-warn/50 p-2">
-            <div className="text-warn">
-              {l.heldBack.length} suspicious batch{l.heldBack.length > 1 ? 'es' : ''} held back: {l.heldBack[0].why}
+          <li className="border-2 border-danger p-2">
+            <div className="flex items-center justify-between gap-2">
+              <StateTag state="danger">{l.heldBack.length} batch held</StateTag>
+              <Explain label="Why held">{l.heldBack[0].why}</Explain>
             </div>
-            <div className="mt-1 flex flex-wrap gap-2">
-              <Button onClick={() => act('reports', true, 'Checked: these reports are real.')}>They're real — count them</Button>
-              <Button tone="danger" onClick={() => act('reports', false, 'Not real: nobody here reported this.')}>
-                Mark as fake
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              <Button className="min-h-12" onClick={() => act('reports', true, 'Checked: these reports are real.')}>
+                Count them
+              </Button>
+              <Button className="min-h-12" tone="danger" onClick={() => act('reports', false, 'Not real: nobody here reported this.')}>
+                Mark fake
               </Button>
             </div>
           </li>
         )}
       </ul>
       {sent && (
-        <p role="status" className="mt-3 text-sm text-ok">
-          {sent}
+        <p role="status" className="mt-3">
+          <StateTag state="normal">Sent · {sent}</StateTag>
         </p>
       )}
     </Card>
@@ -201,30 +229,29 @@ function AddPersonCard({ level }: { level: number }) {
     setNote('')
     setVulnerable(false)
   }
-  const input = 'min-h-11 w-full rounded-lg border border-hollow-700 bg-hollow-800 px-3'
+  const input = 'min-h-12 w-full border-2 border-hollow-700 bg-hollow-950 px-3 font-mono'
   return (
-    <Card title="Add someone to your rounds">
-      <form onSubmit={submit} className="space-y-2 text-sm">
-        <label className="block">
+    <Card title="Add to rounds" right={<Trust>This device only</Trust>}>
+      <form onSubmit={submit} className="space-y-2">
+        <label className="block text-xs uppercase">
           Name
           <input className={input} value={name} onChange={(e) => setName(e.target.value)} />
         </label>
-        <label className="block">
+        <label className="block text-xs uppercase">
           Unit ({level}-…)
           <input className={input} value={unit} inputMode="numeric" onChange={(e) => setUnit(e.target.value)} />
         </label>
-        <label className="block">
+        <label className="block text-xs uppercase">
           Note
           <input className={input} value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
-        <label className="flex min-h-11 items-center gap-2">
+        <label className="flex min-h-11 items-center gap-2 text-xs uppercase">
           <input type="checkbox" className="size-5 accent-lamp" checked={vulnerable} onChange={(e) => setVulnerable(e.target.checked)} />
-          Vulnerable (elderly, oxygen, children…)
+          Vulnerable
         </label>
-        <Button type="submit" tone="primary">
+        <Button type="submit" tone="primary" className="min-h-12 w-full">
           Add
         </Button>
-        <p className="text-xs text-hollow-500">Kept only on this warden device.</p>
       </form>
     </Card>
   )

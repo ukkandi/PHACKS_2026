@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObjec
 import { useSearchParams } from 'react-router-dom'
 import { Shell } from '../../components/Shell'
 import { MoodIcon } from '../../components/MoodIcon'
-import { Button } from '../../components/ui'
+import { Button, Explain, Sign, StateTag, Trust } from '../../components/ui'
 import { sendCare } from '../../lib/care'
 import { SYMPTOMS, type CheckIn, type Symptom, type WaterReport } from '../../lib/db'
 import { getDeviceId } from '../../lib/device'
@@ -31,9 +31,9 @@ interface Draft {
 
 const EMPTY: Draft = { unit: '', okay: true, mood: 3, sleepHours: 7, symptoms: [], water: 'ok' }
 
-const big = 'min-h-20 rounded-2xl border-2 px-4 text-xl font-semibold transition focus-visible:outline-4'
+const big = 'min-h-20 border-2 px-3 font-mono text-xl font-bold tracking-wider uppercase'
 const off = 'border-hollow-700 bg-hollow-800 text-cream hover:border-lamp'
-const on = 'border-lamp bg-lamp/20 text-lamp'
+const on = 'border-lamp bg-lamp text-hollow-950'
 
 export function TerminalView() {
   const [params, setParams] = useSearchParams()
@@ -47,7 +47,9 @@ export function TerminalView() {
   if (!valid) {
     return (
       <Shell view="level terminal">
-        <h1 className="mb-4 text-2xl font-bold">Which level is this terminal on?</h1>
+        <div className="mb-3">
+          <Sign sub="Set up this terminal">Select level</Sign>
+        </div>
         <div className="grid grid-cols-5 gap-2 sm:grid-cols-8">
           {Array.from({ length: LEVEL_COUNT }, (_, i) => i + 1).map((n) => (
             <button key={n} type="button" className={`${big} ${off}`} onClick={() => setParams({ level: String(n) })}>
@@ -167,20 +169,29 @@ function Terminal({ level }: { level: number }) {
   return (
     <Shell
       view={`Level ${level} terminal`}
-      aside={<span className="text-sm text-hollow-300">Shared terminal · no account · clears after use</span>}
+      aside={
+        <span className="flex flex-wrap gap-x-4 gap-y-1">
+          <Trust>No account</Trust>
+          <Trust>Nothing stored</Trust>
+          <Trust>Clears after use</Trust>
+        </span>
+      }
     >
-      <div className="mx-auto max-w-3xl space-y-4">
+      <div className="mx-auto max-w-3xl space-y-3">
+        <Sign sub="Shared terminal · daily check-in">Level {level} · terminal</Sign>
         <WarningBanner world={world} level={level} />
-        <div className="h-2 rounded bg-hollow-800" aria-hidden>
-          <div className="h-2 rounded bg-lamp transition-all" style={{ width: `${(progress / STEPS.length) * 100}%` }} />
+        <div className="grid grid-cols-6 gap-1" aria-hidden>
+          {STEPS.map((s, i) => (
+            <div key={s} className={`h-2 ${i < progress ? 'bg-lamp' : 'bg-hollow-800'}`} />
+          ))}
         </div>
 
         {step === 'unit' && (
-          <Panel title="Daily check-in — enter your unit number" headingRef={headingRef}>
-            <output aria-live="polite" className="mb-4 block text-center font-mono text-5xl tracking-widest">
+          <Panel title="Unit number" headingRef={headingRef}>
+            <output aria-live="polite" className="mb-3 block border-2 border-hollow-700 bg-black py-3 text-center font-mono text-5xl tracking-[0.2em] text-lamp">
               {level}-{d.unit.padEnd(3, '_')}
             </output>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2">
               {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((k) => (
                 <button key={k} type="button" className={`${big} ${off} text-3xl`} onClick={() => update({ unit: (d.unit + k).slice(0, 4) }, false)}>
                   {k}
@@ -192,23 +203,27 @@ function Terminal({ level }: { level: number }) {
               <button type="button" className={`${big} ${off} text-3xl`} onClick={() => update({ unit: (d.unit + '0').slice(0, 4) }, false)}>
                 0
               </button>
-              <button type="button" className={`${big} ${on}`} disabled={!d.unit} onClick={next}>
+              <button type="button" className={`${big} border-lamp bg-lamp text-hollow-950`} disabled={!d.unit} onClick={next}>
                 Next
               </button>
             </div>
-            <p className="mt-3 text-sm text-hollow-500">
-              No account needed. Your unit number is only shared — sealed — with your block warden.
-            </p>
+            <div className="mt-2 flex items-center justify-between">
+              <Trust>Unit sealed to warden only</Trust>
+              <Explain label="About this terminal">
+                No account needed. Your unit number is sent — sealed — only to your block warden. Your answers count
+                anonymously toward Level {level} on the public ledger. Nothing is kept on this terminal.
+              </Explain>
+            </div>
           </Panel>
         )}
 
         {step === 'okay' && (
-          <Panel title={`Unit ${level}-${d.unit}: how are you?`} headingRef={headingRef}>
-            <div className="grid grid-cols-2 gap-3">
-              <button type="button" className={`${big} min-h-32 border-ok/60 bg-ok/10 text-2xl text-ok`} onClick={() => update({ okay: true })}>
+          <Panel title={`Unit ${level}-${d.unit} · status`} headingRef={headingRef}>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" className={`${big} min-h-36 border-lamp bg-lamp text-3xl text-hollow-950`} onClick={() => update({ okay: true })}>
                 I'm okay
               </button>
-              <button type="button" className={`${big} min-h-32 border-danger/60 bg-danger/10 text-2xl text-danger`} onClick={() => update({ okay: false })}>
+              <button type="button" className={`${big} min-h-36 border-danger bg-black text-3xl text-danger`} onClick={() => update({ okay: false })}>
                 I need help
               </button>
             </div>
@@ -216,12 +231,17 @@ function Terminal({ level }: { level: number }) {
         )}
 
         {step === 'mood' && (
-          <Panel title="Your mood today" headingRef={headingRef}>
+          <Panel title="Mood" headingRef={headingRef}>
             <div className="grid grid-cols-5 gap-2">
               {(['Very low', 'Low', 'Okay', 'Good', 'Great'] as const).map((label, i) => (
-                <button key={label} type="button" className={`${big} ${off} flex flex-col items-center justify-center`} onClick={() => update({ mood: (i + 1) as CheckIn['mood'] })}>
+                <button
+                  key={label}
+                  type="button"
+                  className={`${big} ${off} flex flex-col items-center justify-center gap-1 text-sm`}
+                  onClick={() => update({ mood: (i + 1) as CheckIn['mood'] })}
+                >
                   <MoodIcon value={i + 1} size={34} />
-                  <span className="text-sm">{label}</span>
+                  {label}
                 </button>
               ))}
             </div>
@@ -229,12 +249,12 @@ function Terminal({ level }: { level: number }) {
         )}
 
         {step === 'sleep' && (
-          <Panel title="Sleep last night" headingRef={headingRef}>
-            <div className="grid grid-cols-3 gap-3">
+          <Panel title="Sleep" headingRef={headingRef}>
+            <div className="grid grid-cols-3 gap-2">
               {[
-                { label: 'Under 5 hours', h: 4 },
-                { label: '5 to 7 hours', h: 6 },
-                { label: '7 hours or more', h: 8 },
+                { label: 'Under 5 h', h: 4 },
+                { label: '5–7 h', h: 6 },
+                { label: '7 h +', h: 8 },
               ].map((o) => (
                 <button key={o.h} type="button" className={`${big} ${off}`} onClick={() => update({ sleepHours: o.h })}>
                   {o.label}
@@ -245,8 +265,8 @@ function Terminal({ level }: { level: number }) {
         )}
 
         {step === 'symptoms' && (
-          <Panel title="Any of these? Tap all that apply" headingRef={headingRef}>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <Panel title="Symptoms · tap all" headingRef={headingRef}>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {SYMPTOMS.map((s) => {
                 const sel = d.symptoms.includes(s)
                 return (
@@ -254,7 +274,7 @@ function Terminal({ level }: { level: number }) {
                     key={s}
                     type="button"
                     aria-pressed={sel}
-                    className={`${big} ${sel ? on : off} capitalize`}
+                    className={`${big} ${sel ? on : off}`}
                     onClick={() => update({ symptoms: sel ? d.symptoms.filter((x) => x !== s) : [...d.symptoms, s] }, false)}
                   >
                     {s}
@@ -262,46 +282,46 @@ function Terminal({ level }: { level: number }) {
                 )
               })}
             </div>
-            <Button tone="primary" className="mt-4 min-h-16 w-full text-xl" onClick={next}>
-              {d.symptoms.length ? 'Next' : 'None of these — next'}
-            </Button>
+            <button type="button" className={`${big} mt-2 w-full border-lamp bg-lamp text-hollow-950`} onClick={next}>
+              {d.symptoms.length ? 'Next' : 'None ▸'}
+            </button>
           </Panel>
         )}
 
         {step === 'water' && (
-          <Panel title="Is your water okay today?" headingRef={headingRef}>
-            <div className="grid grid-cols-3 gap-3">
+          <Panel title="Water" headingRef={headingRef}>
+            <div className="grid grid-cols-3 gap-2">
               <button type="button" className={`${big} ${off}`} onClick={() => submit('ok')}>
                 Yes
               </button>
               <button type="button" className={`${big} ${off}`} onClick={() => submit('bad')}>
-                Tastes / smells bad
+                Bad
               </button>
               <button type="button" className={`${big} ${off}`} onClick={() => submit('unsure')}>
-                Not sure
+                Unsure
               </button>
             </div>
           </Panel>
         )}
 
         {step === 'done' && (
-          <Panel title={`Thank you, unit ${level}-${d.unit}`} headingRef={headingRef}>
-            <p className="text-xl">
-              {d.okay ? 'You are checked in as okay.' : 'Your block warden has been told you need help.'}
-            </p>
-            <p className="mt-2 text-hollow-300">
-              Your check-in counts — anonymously — toward Level {level}'s numbers on the public ledger. Nothing is kept on
-              this terminal.
-            </p>
-            <Button tone="primary" className="mt-4 min-h-16 w-full text-xl" onClick={reset}>
-              Finish ({countdown}s)
-            </Button>
+          <Panel title={`Unit ${level}-${d.unit} · done`} headingRef={headingRef}>
+            <StateTag state={d.okay ? 'normal' : 'danger'} className="text-3xl">
+              {d.okay ? 'Checked in · okay' : 'Warden told'}
+            </StateTag>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+              <Trust>Counted anonymously · L{level}</Trust>
+              <Trust>Nothing kept here</Trust>
+            </div>
+            <button type="button" className={`${big} mt-3 w-full border-lamp bg-lamp text-hollow-950`} onClick={reset}>
+              Finish · {countdown}
+            </button>
           </Panel>
         )}
 
         {step !== 'unit' && step !== 'done' && (
           <Button tone="ghost" onClick={reset}>
-            Cancel and clear
+            Cancel · clear
           </Button>
         )}
       </div>
@@ -319,11 +339,15 @@ function Panel({
   headingRef: RefObject<HTMLHeadingElement | null>
 }) {
   return (
-    <section className="rounded-2xl border border-hollow-700 bg-hollow-900 p-5">
-      <h1 ref={headingRef} tabIndex={-1} className="mb-4 text-2xl font-bold outline-none">
+    <section className="border-2 border-hollow-700 bg-hollow-900">
+      <h2
+        ref={headingRef}
+        tabIndex={-1}
+        className="border-b-2 border-hollow-700 bg-hollow-950 px-3 py-2 font-mono text-lg font-bold tracking-[0.12em] text-lamp uppercase outline-none"
+      >
         {title}
-      </h1>
-      {children}
+      </h2>
+      <div className="p-3">{children}</div>
     </section>
   )
 }
