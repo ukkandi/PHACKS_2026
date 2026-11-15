@@ -74,7 +74,7 @@ export function MeshMonitor() {
       {rows.length === 0 ? (
         <p className="text-sm text-hollow-500">No packets yet.</p>
       ) : (
-        <ul className="max-h-72 space-y-1 overflow-auto font-mono text-[11px]">
+        <ul tabIndex={0} aria-label="Recent mesh packets" className="max-h-72 space-y-1 overflow-auto font-mono text-[11px]">
           {rows.map((r) => (
             <li key={r.id} className="text-hollow-300">
               <span className="text-hollow-500">{timeAgo(r.firstSeen)}</span> from L{r.originLevel} · {r.label}

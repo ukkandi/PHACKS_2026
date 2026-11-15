@@ -8,6 +8,7 @@ import { isNetworkUp, tickLabel } from '../../sim/world'
 import { LevelTable } from './LevelTable'
 import { MeshMonitor } from './MeshMonitor'
 import { startRelays } from '../../lib/relays'
+import { injectFakeReports } from '../../lib/spoof'
 
 const DEEP_LEVELS = [34, 35, 36, 37, 38, 39, 40]
 
@@ -133,6 +134,20 @@ export function SimView() {
               </Button>
               <Button onClick={() => act({ type: 'contaminateWater', level })}>Contaminate water</Button>
               <Button onClick={() => act({ type: 'cleanWater', level })}>Flush water</Button>
+              <Button
+                tone={l.airBackup ? 'primary' : 'default'}
+                className="col-span-2"
+                onClick={() => act({ type: 'airBackup', level, on: !l.airBackup })}
+              >
+                {l.airBackup ? `Directorate cuts L${level} emergency air line` : `Directorate powers L${level} air pumps`}
+              </Button>
+              <Button
+                tone="danger"
+                className="col-span-2"
+                onClick={() => injectFakeReports(level, world.tick, isNetworkUp(world, level))}
+              >
+                Rogue device: inject 300 fake reports on L{level}
+              </Button>
             </div>
             <hr className="my-3 border-hollow-800" />
             <div className="grid grid-cols-1 gap-2">
@@ -169,7 +184,7 @@ export function SimView() {
           <MeshMonitor />
 
           <Card title="Event log">
-            <ol className="max-h-72 space-y-1 overflow-auto font-mono text-xs" aria-live="polite">
+            <ol tabIndex={0} aria-label="Event log" className="max-h-72 space-y-1 overflow-auto font-mono text-xs" aria-live="polite">
               {world.log
                 .slice()
                 .reverse()

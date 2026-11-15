@@ -15,6 +15,9 @@ export function Shell({
 }) {
   return (
     <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-4">
+      <a href="#main" className="skip-link">
+        Skip to content
+      </a>
       <header className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-hollow-800 pb-3">
         {simulator ? (
           <Link to="/" className="flex items-center gap-2 font-mono text-lg font-bold text-sky-300">
@@ -29,7 +32,9 @@ export function Shell({
         )}
         {aside}
       </header>
-      <main className="flex-1">{children}</main>
+      <main id="main" tabIndex={-1} className="flex-1 outline-none">
+        {children}
+      </main>
       <footer className="mt-8 text-xs text-hollow-500">
         Fictional demo · the Hollow, 2087 · all data simulated · personal data never leaves this device
       </footer>

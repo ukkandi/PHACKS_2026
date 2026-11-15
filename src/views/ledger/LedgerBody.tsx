@@ -53,12 +53,18 @@ export function LedgerBody({ nodeId, readOnly = false }: { nodeId: string; readO
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Reports, last 12h" value={view.totalReports.toLocaleString()} />
         <Stat label="Levels reporting" value={`${view.levelsReporting} / 40`} />
         <Stat label="Outbreaks flagged" value={String(view.levels.filter((l) => l.outbreak.status === 'outbreak').length)} danger />
         <Stat label="Hollow time" value={tickLabel(tick)} />
       </div>
+      {view.levelsReporting < 40 && (
+        <p role="status" className="rounded-lg border border-hollow-700 p-2 text-sm text-hollow-300">
+          This ledger node is still filling in: level phones report every 3 hours, so a newly joined node needs a few
+          hours of Hollow time to see every level.
+        </p>
+      )}
       <p className="text-xs text-hollow-500">
         Anonymous counts only — no names, units or device ids ever reach the ledger. This copy is kept by a ledger node on
         Level {LEDGER_LEVEL} <SimTag>placement</SimTag>; anyone can run one and get the same numbers.{' '}

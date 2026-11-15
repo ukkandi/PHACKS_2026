@@ -41,7 +41,7 @@ export function MessagesCard() {
           Send
         </Button>
       </form>
-      <ol className="max-h-72 space-y-2 overflow-auto" aria-live="polite">
+      <ol tabIndex={0} aria-label="Family messages" className="max-h-72 space-y-2 overflow-auto" aria-live="polite">
         {messages.map((m) => (
           <li key={m.id} className={`rounded-lg px-3 py-2 ${m.mine ? 'bg-lamp/10' : 'bg-hollow-800'}`}>
             <div className="text-xs text-hollow-300">

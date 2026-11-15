@@ -5,7 +5,7 @@
   --color-hollow-900: #12161b;
   --color-hollow-800: #1a2027;
   --color-hollow-700: #263039;
-  --color-hollow-500: #5b6b7a;
+  --color-hollow-500: #8394a3; /* ≥4.5:1 on hollow-900 for small text */
   --color-hollow-300: #a9b6c2;
   --color-lamp: #f5b942;
   --color-ok: #4ade80;
@@ -29,6 +29,30 @@ body {
 }
 
 /* Strong, visible keyboard focus everywhere (accessibility principle #5). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+}
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+  z-index: 50;
+  background: var(--color-lamp);
+  color: var(--color-hollow-950);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+}
+
 :focus-visible {
   outline: 3px solid var(--color-lamp);
   outline-offset: 2px;

@@ -14,7 +14,7 @@ export function LevelTable({
   onSelect: (level: number) => void
 }) {
   return (
-    <div className="max-h-[70vh] overflow-auto rounded-lg border border-hollow-800">
+    <div tabIndex={0} aria-label="All levels" className="max-h-[70vh] overflow-auto rounded-lg border border-hollow-800">
       <table className="w-full text-left font-mono text-xs">
         <thead className="sticky top-0 bg-hollow-900 text-hollow-300">
           <tr>

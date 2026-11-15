@@ -59,8 +59,9 @@ export const useLedger = create<LedgerState>((set, get) => ({
       if (b.kind === 'summary') {
         if (get().summaries.some((s) => s.id === p.id)) return
         const tick = getWorld()?.tick ?? b.tick
+        // Keep the rolling window; drop anything from a future tick (the world was reset).
         const summaries = [...get().summaries, { ...b, id: p.id, receivedAt: now, hops: hopCount(p.path) }].filter(
-          (s) => tick - s.tick < BASELINE_FROM,
+          (s) => s.tick <= tick && tick - s.tick < BASELINE_FROM,
         )
         set({ summaries })
       } else if (b.kind === 'alert') {
