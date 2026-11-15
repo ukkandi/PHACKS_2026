@@ -35,7 +35,8 @@ Every push to `main` redeploys. All demo tabs must be on the same site (same ori
 Every browser tab is a separate device (own id, own IndexedDB). `?device=<name>` on `/resident` pins an identity.
 
 **Interface language:** every screen leads with short states — **NORMAL / WATCH / DANGER** (green / yellow / red; hazard
-stripes only on DANGER). Explanations sit behind the small **?** buttons. Small **●** trust chips show what's actually true
+stripes only on DANGER) — or a grey **NO DATA** when there's no reading or too few reports (under 20) to say anything; a
+level is never shown NORMAL by default. Wardens can't confirm or dispute a figure until it has enough reports. Explanations sit behind the small **?** buttons. Small **●** trust chips show what's actually true
 right now ("Offline OK", "Mesh only · 6 nearby", "heard 3 min ago · via 2 hops", "based on 291 reports", "stored on this device").
 
 ## Demo script (click by click)
@@ -50,7 +51,7 @@ Use one browser window.
 3. Click **Open all 8 tabs**. If your browser blocks pop-ups, allow them for the site and click again, or click the 8 numbered rows one by one. **Order doesn't matter**: each tab catches up from the mesh when it opens.
    - Tabs: Public ledger · World Simulator · Mara (L38) · Teo (L36) · Ilan (L12) · L38 terminal · Warden L38 · Directorate.
    - The three resident tabs set themselves up as Mara, Teo and Ilan automatically.
-4. **Check:** the ledger's status line reads **0 DANGER · 0 WATCH · 40 NORMAL** (an occasional single WATCH is normal noise), with **● 40 / 40 levels reporting** and **voted by 40 of 40 levels** under Power reserve.
+4. **Check:** the ledger's status line reads **0 DANGER · 0 WATCH · 40 NORMAL** (an occasional single WATCH is normal noise), with **● 40 / 40 levels reporting** and **voted by 40 of 40 levels** under Power reserve. If it still shows **○ 40 NO DATA**, the World Simulator tab hasn't loaded yet — it fills in within a second or two once it has.
 
 To restart at any point: **World Simulator → Reset & set up demo** (or the same button on `/`). Every open tab reloads into the starting state.
 

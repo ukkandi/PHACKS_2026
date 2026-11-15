@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Shell } from '../../components/Shell'
 import { Button, Card, Explain, Sign, StateTag, Trust } from '../../components/ui'
 import type { State } from '../../lib/status'
+import { MIN_REPORTS } from '../../lib/outbreak'
 import { getDeviceId } from '../../lib/device'
 import { triage, type TriageRow } from '../../lib/triage'
 import { useWorld } from '../../lib/worldFeed'
@@ -153,6 +154,8 @@ function VerifyCard({ level }: { level: number }) {
     setSent(`${confirmed ? 'Confirmed' : 'Disputed'} ${claim} · L${level}`)
   }
   const o = l.outbreak.status
+  // Nothing to vouch for until the level has enough reports to flag something.
+  const enough = l.reports >= MIN_REPORTS
   return (
     <Card
       title={`Verify ledger · L${level}`}
@@ -161,29 +164,47 @@ function VerifyCard({ level }: { level: number }) {
       <ul className="space-y-3">
         <li>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <StateTag state={o === 'outbreak' ? 'danger' : o === 'watch' ? 'watch' : 'normal'}>
-              Illness {(l.outbreak.rate * 100).toFixed(1)}% · {o}
-            </StateTag>
-            <Trust>{l.reports} reports</Trust>
+            {enough ? (
+              <StateTag state={o === 'outbreak' ? 'danger' : o === 'watch' ? 'watch' : 'normal'}>
+                Illness {(l.outbreak.rate * 100).toFixed(1)}% · {o}
+              </StateTag>
+            ) : (
+              <StateTag state="nodata">Illness · not enough data</StateTag>
+            )}
+            <Trust tone={enough ? 'ok' : 'muted'}>{l.reports} reports</Trust>
           </div>
           <div className="mt-1 grid grid-cols-2 gap-2">
-            <Button className="min-h-12" onClick={() => act('outbreak', true, 'Seen many sick neighbours on rounds.')}>
+            <Button className="min-h-12" disabled={!enough} onClick={() => act('outbreak', true, 'Seen many sick neighbours on rounds.')}>
               Confirm outbreak
             </Button>
-            <Button className="min-h-12" tone="ghost" onClick={() => act('outbreak', false, 'Not seeing illness on rounds.')}>
+            <Button
+              className="min-h-12"
+              tone="ghost"
+              disabled={!enough}
+              onClick={() => act('outbreak', false, 'Not seeing illness on rounds.')}
+            >
               Dispute
             </Button>
           </div>
         </li>
         <li>
-          <StateTag state={l.waterBadShare >= 0.2 ? 'danger' : l.waterBadShare >= 0.1 ? 'watch' : 'normal'}>
-            Bad water {Math.round(l.waterBadShare * 100)}%
-          </StateTag>
+          {enough ? (
+            <StateTag state={l.waterBadShare >= 0.2 ? 'danger' : l.waterBadShare >= 0.1 ? 'watch' : 'normal'}>
+              Bad water {Math.round(l.waterBadShare * 100)}%
+            </StateTag>
+          ) : (
+            <StateTag state="nodata">Water · not enough data</StateTag>
+          )}
           <div className="mt-1 grid grid-cols-2 gap-2">
-            <Button className="min-h-12" onClick={() => act('water', true, 'Tap water discoloured on this block.')}>
+            <Button className="min-h-12" disabled={!enough} onClick={() => act('water', true, 'Tap water discoloured on this block.')}>
               Confirm water
             </Button>
-            <Button className="min-h-12" tone="ghost" onClick={() => act('water', false, 'Water looks and smells fine.')}>
+            <Button
+              className="min-h-12"
+              tone="ghost"
+              disabled={!enough}
+              onClick={() => act('water', false, 'Water looks and smells fine.')}
+            >
               Dispute
             </Button>
           </div>

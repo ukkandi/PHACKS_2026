@@ -28,7 +28,7 @@ export function MeshAlertsCard() {
                 <StateTag state={a.band === 'warning' ? 'watch' : 'danger'}>
                   L{a.level} · {a.band === 'blackout' ? 'blackout' : `risk · ${formatHoursRange(a.hoursRange)}`}
                 </StateTag>
-                {familyLevels.has(a.level) && <span className="font-mono text-[11px] text-lamp uppercase">family here</span>}
+                {familyLevels.has(a.level) && <span className="font-mono text-sm text-lamp uppercase">family here</span>}
               </div>
               <Trust>
                 Heard {ago(a.receivedAt)} · via {hopCount(a.route)} hops{a.band !== 'blackout' ? ` · ${a.confidence} conf.` : ''}

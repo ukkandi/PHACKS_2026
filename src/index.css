@@ -14,8 +14,8 @@
   --color-hollow-900: #1d1915; /* panels */
   --color-hollow-800: #2a241f; /* controls */
   --color-hollow-700: #3b332c; /* rules / borders */
-  --color-hollow-500: #a89e8f; /* muted text, ≥5:1 on panels */
-  --color-hollow-300: #d3c8b6; /* secondary text */
+  --color-hollow-500: #c4baa9; /* muted text: ~8:1 on panels, readable in screen recordings */
+  --color-hollow-300: #e3dac9; /* secondary text */
   --color-cream: #f2ebdd; /* text */
   --color-lamp: #f2a33a; /* amber: primary action, signage */
   --color-data: #5fa8d3; /* numbers & charts */
@@ -27,6 +27,10 @@
 
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Readability floor: nothing below 13px (Tailwind's text-xs is normally 12px). */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.35;
 }
 
 /*
@@ -80,9 +84,9 @@ body {
 
 /* Blackout mode: dim amber-on-black, minimum light. */
 .blackout-mode {
-  --color-cream: #e0963a;
-  --color-hollow-300: #c08436;
-  --color-hollow-500: #a87532;
+  --color-cream: #e89d3e;
+  --color-hollow-300: #dc9a44;
+  --color-hollow-500: #c98d3c;
   --color-hollow-900: #0d0b09;
   --color-hollow-800: #17130f;
   --color-hollow-700: #3a2a18;

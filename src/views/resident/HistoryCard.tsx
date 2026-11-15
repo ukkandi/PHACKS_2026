@@ -51,17 +51,17 @@ export function HistoryCard() {
     >
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <div className="font-mono text-[11px] tracking-[0.15em] text-hollow-300 uppercase">Mood · avg</div>
+          <div className="font-mono text-sm tracking-[0.15em] text-hollow-300 uppercase">Mood · avg</div>
           <div className="font-mono text-2xl font-bold text-lamp">{avgMood.toFixed(1)}<span className="text-sm text-hollow-500">/5</span></div>
           {series.length >= 2 && <Spark values={series.map((c) => c.mood)} max={5} color="#F2A33A" label={`Mood over your last ${series.length} check-ins`} />}
         </div>
         <div>
-          <div className="font-mono text-[11px] tracking-[0.15em] text-hollow-300 uppercase">Sleep · avg</div>
+          <div className="font-mono text-sm tracking-[0.15em] text-hollow-300 uppercase">Sleep · avg</div>
           <div className="font-mono text-2xl font-bold text-data">{avgSleep.toFixed(1)}<span className="text-sm text-hollow-500"> h</span></div>
           {series.length >= 2 && <Spark values={series.map((c) => c.sleepHours)} max={12} color="#5FA8D3" label={`Sleep over your last ${series.length} check-ins`} />}
         </div>
       </div>
-      <ul className="mt-2 space-y-0.5 font-mono text-[11px] uppercase">
+      <ul className="mt-2 space-y-0.5 font-mono text-sm uppercase">
         {recent.map((c) => (
           <li key={c.id} className="flex items-center gap-3">
             <span className="w-24 text-hollow-500">{tickLabel(c.tick)}</span>

@@ -1,13 +1,15 @@
 import { Fragment, useState } from 'react'
 import { Explain, StateTag, Trust } from '../../components/ui'
 import type { LedgerView } from '../../lib/ledger'
+import { MIN_REPORTS } from '../../lib/outbreak'
 import { STATE_WORD, type State } from '../../lib/status'
 import type { DirectorateBulletin } from '../../sim/directorate'
 import { airCell, illnessCell, powerCell, rowState, waterCell, type Cell } from './boardState'
 
-const color: Record<State, string> = { normal: 'text-ok', watch: 'text-warn', danger: 'text-danger' }
+const color: Record<State, string> = { normal: 'text-ok', watch: 'text-warn', danger: 'text-danger', nodata: 'text-hollow-500' }
 
 function C({ cell }: { cell: Cell }) {
+  if (cell.state === 'nodata') return <span className="text-hollow-500">{cell.word}</span>
   return <span className={cell.state === 'normal' ? 'text-cream' : `font-bold ${color[cell.state]}`}>{cell.word}</span>
 }
 
@@ -33,7 +35,7 @@ export function HollowMap({ view, bulletin }: { view: LedgerView; bulletin: Dire
       <div className="overflow-x-auto">
         <table className="w-full min-w-[680px] text-left font-mono text-xs uppercase">
           <caption className="sr-only">Per-level states from anonymous check-ins in the last 12 hours.</caption>
-          <thead className="text-[10px] tracking-[0.15em] text-hollow-500">
+          <thead className="text-xs tracking-[0.15em] text-hollow-500">
             <tr className="border-b border-hollow-700">
               <th scope="col" className="px-2 py-1">Lvl</th>
               <th scope="col" className="px-2 py-1">State</th>
@@ -66,7 +68,7 @@ export function HollowMap({ view, bulletin }: { view: LedgerView; bulletin: Dire
                     <td className="px-2 py-1">
                       <span className="inline-flex items-center gap-1.5">
                         {st === 'danger' && <span className="hazard inline-block h-3 w-4" aria-hidden />}
-                        <span className={`font-bold ${color[st]}`}>{STATE_WORD[st]}</span>
+                        <span className={st === 'nodata' ? 'text-hollow-500' : `font-bold ${color[st]}`}>{STATE_WORD[st]}</span>
                       </span>
                     </td>
                     <td className="px-2 py-1">
@@ -75,14 +77,14 @@ export function HollowMap({ view, bulletin }: { view: LedgerView; bulletin: Dire
                     <td className="px-2 py-1">
                       <C cell={illnessCell(l)} />
                     </td>
-                    <td className="px-2 py-1 text-hollow-500">{off ? `${(off.symptomRate * 100).toFixed(1)}%` : '—'}</td>
+                    <td className="px-2 py-1 text-hollow-500">{off ? `${(off.symptomRate * 100).toFixed(1)}%` : 'NO DATA'}</td>
                     <td className="px-2 py-1">
                       <C cell={waterCell(l, off)} />
                     </td>
                     <td className="px-2 py-1">
                       <C cell={airCell(l)} />
                     </td>
-                    <td className={`px-2 py-1 text-right ${l.reports < 20 ? 'text-warn' : 'text-data'}`}>
+                    <td className={`px-2 py-1 text-right ${l.reports === 0 ? 'text-hollow-500' : l.reports < MIN_REPORTS ? 'text-warn' : 'text-data'}`}>
                       {l.reports}
                       {l.heldBack.length > 0 && <span className="text-danger"> +{l.heldBack.length} held</span>}
                     </td>

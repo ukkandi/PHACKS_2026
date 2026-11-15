@@ -38,10 +38,15 @@ export function LedgerBody({ nodeId }: { nodeId: string }) {
         <StateTag state="danger" className="text-base">{count('danger')} danger</StateTag>
         <StateTag state="watch" className="text-base">{count('watch')} watch</StateTag>
         <StateTag state="normal" className="text-base">{count('normal')} normal</StateTag>
+        {count('nodata') > 0 && (
+          <StateTag state="nodata" className="text-base">
+            {count('nodata')} no data
+          </StateTag>
+        )}
         <span className="font-mono text-sm text-lamp">{tickLabel(tick)}</span>
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        <Trust tone="ok">Based on {view.totalReports.toLocaleString()} reports · 12 h</Trust>
+        <Trust tone={view.totalReports ? 'ok' : 'muted'}>Based on {view.totalReports.toLocaleString()} reports · 12 h</Trust>
         <Trust tone={view.levelsReporting < 40 ? 'warn' : 'ok'}>{view.levelsReporting} / 40 levels reporting</Trust>
         <Trust>Anonymous counts only</Trust>
         <Button tone="ghost" className="!min-h-8 !px-2 text-xs underline" onClick={download}>

@@ -33,7 +33,7 @@ export function OnBehalfForm({ name, onSubmit, onCancel }: { name: string; onSub
         </button>
       </fieldset>
       <fieldset className="flex flex-wrap items-center gap-2">
-        <legend className="mb-1 font-mono text-[11px] tracking-[0.15em] text-hollow-300 uppercase">Mood</legend>
+        <legend className="mb-1 font-mono text-sm tracking-[0.15em] text-hollow-300 uppercase">Mood</legend>
         {([1, 2, 3, 4, 5] as const).map((m) => (
           <button key={m} type="button" aria-pressed={mood === m} aria-label={`Mood ${m}`} className={chip(mood === m)} onClick={() => setMood(m)}>
             {m}
@@ -52,7 +52,7 @@ export function OnBehalfForm({ name, onSubmit, onCancel }: { name: string; onSub
         />
       </label>
       <fieldset className="flex flex-wrap gap-2">
-        <legend className="mb-1 font-mono text-[11px] tracking-[0.15em] text-hollow-300 uppercase">Symptoms</legend>
+        <legend className="mb-1 font-mono text-sm tracking-[0.15em] text-hollow-300 uppercase">Symptoms</legend>
         {SYMPTOMS.map((s) => {
           const on = symptoms.includes(s)
           return (
@@ -63,7 +63,7 @@ export function OnBehalfForm({ name, onSubmit, onCancel }: { name: string; onSub
         })}
       </fieldset>
       <fieldset className="flex flex-wrap gap-2">
-        <legend className="mb-1 font-mono text-[11px] tracking-[0.15em] text-hollow-300 uppercase">Water</legend>
+        <legend className="mb-1 font-mono text-sm tracking-[0.15em] text-hollow-300 uppercase">Water</legend>
         {(['ok', 'bad', 'unsure'] as const).map((w) => (
           <button key={w} type="button" aria-pressed={water === w} className={chip(water === w)} onClick={() => setWater(w)}>
             {w}

@@ -37,7 +37,7 @@ export function Shell({
         <main id="main" tabIndex={-1} className="flex-1 outline-none">
           {children}
         </main>
-        <footer className="mt-8 border-t-2 border-hollow-800 pt-2 font-mono text-[10px] tracking-wider text-hollow-500 uppercase">
+        <footer className="mt-8 border-t-2 border-hollow-800 pt-2 font-mono text-xs tracking-wider text-hollow-500 uppercase">
           Simulated demo · The Hollow 2087
         </footer>
       </div>

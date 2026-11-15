@@ -2,12 +2,16 @@
 // Pure display mapping of numbers the app already computes — no new logic.
 import type { RiskBand } from '../sim/predict'
 
-export type State = 'normal' | 'watch' | 'danger'
+/** 'nodata' = not enough reports or no reading: shown grey, never as NORMAL. */
+export type State = 'normal' | 'watch' | 'danger' | 'nodata'
 
-export const STATE_WORD: Record<State, string> = { normal: 'NORMAL', watch: 'WATCH', danger: 'DANGER' }
+export const STATE_WORD: Record<State, string> = { normal: 'NORMAL', watch: 'WATCH', danger: 'DANGER', nodata: 'NO DATA' }
 
+/** Worst known state; 'nodata' only if nothing is known. */
 export function worst(...states: State[]): State {
-  return states.includes('danger') ? 'danger' : states.includes('watch') ? 'watch' : 'normal'
+  if (states.includes('danger')) return 'danger'
+  if (states.includes('watch')) return 'watch'
+  return states.includes('normal') ? 'normal' : 'nodata'
 }
 
 export function powerState(blackout: boolean, band: RiskBand): State {

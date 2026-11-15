@@ -30,7 +30,7 @@ export function Sign({ children, sub, as: Tag = 'h1' }: { children: ReactNode; s
   return (
     <div className="border-l-8 border-lamp bg-hollow-900 px-3 py-2">
       <Tag className="font-mono text-xl font-bold tracking-[0.08em] text-cream uppercase sm:text-2xl">{children}</Tag>
-      {sub && <div className="font-mono text-xs tracking-wider text-hollow-300 uppercase">{sub}</div>}
+      {sub && <div className="font-mono text-sm tracking-wider text-hollow-300 uppercase">{sub}</div>}
     </div>
   )
 }
@@ -53,7 +53,7 @@ export function Card({
     <section className={`border-2 border-hollow-700 bg-hollow-900 ${className}`}>
       {(title || right || help) && (
         <header className="flex items-center justify-between gap-2 border-b-2 border-hollow-700 bg-hollow-950 px-3 py-1.5">
-          <h2 className="font-mono text-xs font-bold tracking-[0.12em] text-lamp uppercase">{title}</h2>
+          <h2 className="font-mono text-sm font-bold tracking-[0.12em] text-lamp uppercase">{title}</h2>
           <div className="flex items-center gap-2">
             {right}
             {help && <Explain>{help}</Explain>}
@@ -94,14 +94,20 @@ export function Explain({ children, label = 'Explain' }: { children: ReactNode; 
   )
 }
 
-const stateText: Record<State, string> = { normal: 'text-ok', watch: 'text-warn', danger: 'text-danger' }
-const stateBorder: Record<State, string> = { normal: 'border-ok', watch: 'border-warn', danger: 'border-danger' }
+const stateText: Record<State, string> = { normal: 'text-ok', watch: 'text-warn', danger: 'text-danger', nodata: 'text-hollow-500' }
+const stateBorder: Record<State, string> = {
+  normal: 'border-ok',
+  watch: 'border-warn',
+  danger: 'border-danger',
+  nodata: 'border-hollow-700 border-dashed',
+}
+const stateGlyph: Record<State, string> = { normal: '■', watch: '■', danger: '▲', nodata: '○' }
 
 /** "■ WATCH" — the one way a state is shown. */
 export function StateTag({ state, children, className = '' }: { state: State; children?: ReactNode; className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 font-mono text-xs font-bold tracking-wider uppercase ${stateText[state]} ${className}`}>
-      <span aria-hidden>{state === 'danger' ? '▲' : '■'}</span>
+    <span className={`inline-flex items-center gap-1.5 font-mono text-sm font-bold tracking-wider uppercase ${stateText[state]} ${className}`}>
+      <span aria-hidden>{stateGlyph[state]}</span>
       {children ?? STATE_WORD[state]}
     </span>
   )
@@ -113,7 +119,7 @@ export function StatusTile({ label, state, word, value }: { label: string; state
     <div className={`border-2 bg-hollow-900 ${stateBorder[state]}`}>
       {state === 'danger' && <div className="hazard h-2" aria-hidden />}
       <div className="px-3 py-2">
-        <div className="font-mono text-[11px] tracking-[0.15em] text-hollow-300 uppercase">{label}</div>
+        <div className="font-mono text-sm tracking-[0.15em] text-hollow-300 uppercase">{label}</div>
         <div className={`font-mono text-xl font-bold tracking-wide uppercase ${stateText[state]}`}>{word ?? STATE_WORD[state]}</div>
         {value !== undefined && <div className="font-mono text-xs tracking-wider text-hollow-300 uppercase">{value}</div>}
       </div>
@@ -125,7 +131,7 @@ export function StatusTile({ label, state, word, value }: { label: string; state
 export function Trust({ children, tone = 'ok' }: { children: ReactNode; tone?: 'ok' | 'warn' | 'danger' | 'muted' }) {
   const color = { ok: 'text-ok', warn: 'text-warn', danger: 'text-danger', muted: 'text-hollow-500' }[tone]
   return (
-    <span className="inline-flex items-center gap-1.5 font-mono text-[11px] tracking-wider text-hollow-300 uppercase">
+    <span className="inline-flex items-center gap-1.5 font-mono text-sm tracking-wider text-hollow-300 uppercase">
       <span className={color} aria-hidden>
         ●
       </span>
@@ -147,7 +153,7 @@ const badgeClass: Record<BadgeTone, string> = {
 
 export function Badge({ tone = 'muted', children }: { tone?: BadgeTone; children: ReactNode }) {
   return (
-    <span className={`inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[11px] font-bold tracking-wider uppercase ${badgeClass[tone]}`}>
+    <span className={`inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-sm font-bold tracking-wider uppercase ${badgeClass[tone]}`}>
       {children}
     </span>
   )
@@ -156,7 +162,7 @@ export function Badge({ tone = 'muted', children }: { tone?: BadgeTone; children
 /** Marks anything simulated in this demo. */
 export function SimTag({ children = 'simulated' }: { children?: ReactNode }) {
   return (
-    <span className="border border-dashed border-hollow-500 px-1.5 py-0.5 font-mono text-[10px] text-hollow-500 uppercase">
+    <span className="border border-dashed border-hollow-500 px-1.5 py-0.5 font-mono text-xs text-hollow-500 uppercase">
       {children}
     </span>
   )

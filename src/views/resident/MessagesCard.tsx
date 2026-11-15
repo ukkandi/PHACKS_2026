@@ -50,7 +50,7 @@ export function MessagesCard() {
       <ol tabIndex={0} aria-label="Family messages" className="max-h-72 space-y-1 overflow-auto" aria-live="polite">
         {messages.map((m) => (
           <li key={m.id} className={`border-l-4 px-2 py-1 ${m.mine ? 'border-lamp bg-hollow-950' : 'border-data bg-hollow-800'}`}>
-            <div className="font-mono text-[11px] tracking-wider text-hollow-300 uppercase">
+            <div className="font-mono text-sm tracking-wider text-hollow-300 uppercase">
               {m.mine ? 'You' : m.name} · L{m.level} · {tickLabel(m.tick)}
             </div>
             <div>{m.text}</div>

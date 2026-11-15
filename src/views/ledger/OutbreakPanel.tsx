@@ -40,15 +40,15 @@ export function OutbreakPanel({ view, bulletin }: { view: LedgerView; bulletin: 
                 </div>
                 <div className="mt-1 grid grid-cols-3 gap-2 font-mono uppercase">
                   <div>
-                    <div className="text-[10px] tracking-[0.15em] text-data">Lantern</div>
+                    <div className="text-xs tracking-[0.15em] text-data">Lantern</div>
                     <div className="text-2xl font-bold text-data">{pct(l.outbreak.rate)}</div>
                   </div>
                   <div>
-                    <div className="text-[10px] tracking-[0.15em] text-hollow-500">Official</div>
+                    <div className="text-xs tracking-[0.15em] text-hollow-500">Official</div>
                     <div className="text-2xl font-bold text-hollow-500">{official ? pct(official.symptomRate) : '—'}</div>
                   </div>
                   <div>
-                    <div className="text-[10px] tracking-[0.15em] text-hollow-500">Gap</div>
+                    <div className="text-xs tracking-[0.15em] text-hollow-500">Gap</div>
                     <div className={`text-2xl font-bold ${ratio >= 1.5 ? 'text-warn' : 'text-hollow-300'}`}>
                       {official ? `${ratio.toFixed(1)}× lower` : '—'}
                     </div>

@@ -1,5 +1,6 @@
 import { Card } from '../../components/ui'
 import { bandStats, type LedgerView } from '../../lib/ledger'
+import { MIN_REPORTS } from '../../lib/outbreak'
 
 const BANDS = [
   { name: 'Upper 1–10', from: 1, to: 10 },
@@ -24,7 +25,7 @@ export function WellbeingPanel({ view }: { view: LedgerView }) {
   return (
     <Card title="Sleep & mood by depth" help={insight}>
       <table className="w-full text-left font-mono text-xs uppercase">
-        <thead className="text-[10px] tracking-[0.15em] text-hollow-500">
+        <thead className="text-xs tracking-[0.15em] text-hollow-500">
           <tr>
             <th scope="col">Band</th>
             <th scope="col">Low mood</th>
@@ -38,9 +39,18 @@ export function WellbeingPanel({ view }: { view: LedgerView }) {
               <th scope="row" className="py-1 font-normal">
                 {r.name}
               </th>
-              <td className={r.lowMood >= 0.3 ? 'font-bold text-warn' : ''}>{Math.round(r.lowMood * 100)}%</td>
-              <td className={r.shortSleep >= 0.3 ? 'font-bold text-warn' : ''}>{Math.round(r.shortSleep * 100)}%</td>
-              <td className="text-right text-data">{r.reports}</td>
+              {r.reports < MIN_REPORTS ? (
+                <>
+                  <td className="text-hollow-500">No data</td>
+                  <td className="text-hollow-500">No data</td>
+                </>
+              ) : (
+                <>
+                  <td className={r.lowMood >= 0.3 ? 'font-bold text-warn' : ''}>{Math.round(r.lowMood * 100)}%</td>
+                  <td className={r.shortSleep >= 0.3 ? 'font-bold text-warn' : ''}>{Math.round(r.shortSleep * 100)}%</td>
+                </>
+              )}
+              <td className={`text-right ${r.reports ? 'text-data' : 'text-hollow-500'}`}>{r.reports}</td>
             </tr>
           ))}
         </tbody>

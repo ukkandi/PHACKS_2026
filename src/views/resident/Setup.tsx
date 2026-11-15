@@ -30,7 +30,7 @@ export function Setup() {
     <div className="mx-auto max-w-md space-y-3">
       <Sign sub="Set up this device">New device</Sign>
       <Trust>Stored on this device only</Trust>
-      <div className="font-mono text-[11px] tracking-[0.15em] text-hollow-300 uppercase">Demo family {DEMO_FAMILY}</div>
+      <div className="font-mono text-sm tracking-[0.15em] text-hollow-300 uppercase">Demo family {DEMO_FAMILY}</div>
       <div className="grid gap-2">
         {PRESETS.map((p) => (
           <Button
