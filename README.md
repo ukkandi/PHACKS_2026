@@ -52,7 +52,8 @@ Use one browser window.
    - Tabs: Public ledger · World Simulator · Mara (L38) · Teo (L36) · Ilan (L12) · L38 terminal · Warden L38 · Directorate.
    - The three resident tabs set themselves up as Mara, Teo and Ilan automatically.
 4. **Check:** the ledger's status line reads **0 DANGER · 0 WATCH · 40 NORMAL** (an occasional single WATCH is normal noise), with **● 40 / 40 levels reporting** and **voted by 40 of 40 levels** under Power reserve. If it still shows **○ 40 NO DATA**, the World Simulator tab hasn't loaded yet — it fills in within a second or two once it has.
-5. **Check:** the Warden tab reads **■ ACTIVE · VOUCHED BY 3 OF L38** (plus "+1 other level, not counted" — that's Teo on L36). Its key fingerprint is under the signage (**KEY XXXX·XXXX**); Mara's **WARDENS · L38** card shows the same key with **● YOU VOUCHED**.
+5. **Check:** the Warden tab reads **■ ACTIVE · VOUCHED BY 3 OF L38** (plus "+1 other level, not counted" — that's Teo on L36) and shows its **VISIT FIRST** list. Its key fingerprint is under the signage (**KEY XXXX·XXXX**); Mara's **WARDENS · L38** card shows the same key with **● YOU VOUCHED**. (Until it's active the warden tab is a locked screen; the rounds arrive encrypted to its key a moment after activation.)
+6. Optional, privacy: open **`/warden?level=38&device=anyname`** in a new tab. It's a **locked** screen — **NOT ACTIVE · 0/3 VOUCHES**, its key in large type, and how to get vouched. No names, units, rounds, care notes or ledger buttons; that data was never sent to it. Close the tab.
 
 To restart at any point: **World Simulator → Reset & set up demo** (or the same button on `/`). Every open tab reloads into the starting state.
 
@@ -111,7 +112,7 @@ Real logic, unit-tested and running in the browser:
 - **Mesh:** gossip relaying with hop routes, TTL and dedup, plus selective relaying with offline beacons and anonymous origins.
 - **Encryption:** AES-GCM for family packets (key from the family code).
 - **Warden authentication, no server:** each warden device makes real WebCrypto keys (ECDSA P-256 to sign, ECDH P-256 to receive), private keys non-extractable. A warden becomes active once **3 residents of its own level** vouch for its public key, each vouch signed by a key made on the resident's device (not an account). Every device checks every signature itself; the ledger ignores warden confirmations and check-ins that are unsigned, forged or from an unvouched key, and lists them as rejected.
-- **Care notes:** encrypted per note to each active warden's public key (ephemeral ECDH → AES-GCM); only that warden device can read them.
+- **Care notes and rounds:** every care note and every rounds entry (name, unit, notes, "vulnerable") is encrypted separately to each active warden's public key (ephemeral ECDH → AES-GCM). A device that isn't a vouched warden never receives anything it can read, and sees only a locked screen. Active wardens re-share their rounds, encrypted, with any newly activated warden of their level. On the warden device everything is stored encrypted to its own key (random record ids, no names or unit numbers on disk) and decrypted in memory.
 - **Ledger:** aggregation of anonymous counts, outbreak detection (two-proportion z-test against each level's own history), anomaly hold-back, and catch-up for late-joining devices.
 - **Community vote tally:** Borda count over each level's latest ballot.
 - **Allocation engine:** shares the reserve by community priorities.
@@ -124,6 +125,7 @@ Simulated (marked `// SIMULATED:` in code):
 - **The Directorate's bulletin:** deliberately under-reports, acknowledges blackouts late, sends reserve upward (`src/sim/directorate.ts`).
 - **"Level phones":** one stand-in device per level, hosted by the World Simulator, relaying traffic and sending synthetic residents' anonymous counts (`src/lib/relays.ts`, `src/sim/standin.ts`).
 - **The radio layer:** all tabs share one BroadcastChannel. Links are allowed if both ends have the Directorate net, or if devices are within 2 levels.
+- **Demo rounds book** (`src/sim/demoRounds.ts`): Mrs. Okafor, Mr. Brandt and the others are held by the World Simulator's L38 level phone and handed over — encrypted — only to a warden key once it's active.
 - **Demo pre-vouch** (`src/lib/demoVouch.ts`): Mara, Teo and two simulated L38 residents on the level phone vouch automatically for the first W-38-WAR key they hear. In real use a resident taps **VOUCH** after checking the key on the warden's screen in person.
 - **Rogue device and impostor warden:** the fake-report injection and the impostor confirmation are simulated attacks.
 

@@ -25,12 +25,22 @@ const has = (text, needle) => text.toLowerCase().includes(needle.toLowerCase())
   check('Setup: ledger receives level phones', (await txt(ledger.locator('main'))).includes('40 / 40'))
   // Warden W-38-WAR is activated by 3 signed vouches from L38 residents (Mara + 2 level-phone residents).
   let wardenText = ''
-  for (let i = 0; i < 20 && !/Active · vouched by 3 of L38/i.test(wardenText); i++) {
+  for (let i = 0; i < 24 && !(/Active · vouched by 3 of L38/i.test(wardenText) && /Mrs\. Okafor/i.test(wardenText)); i++) {
     await warden.waitForTimeout(250)
     wardenText = await txt(warden.locator('main'))
   }
   check('Setup: warden W-38-WAR active, vouched by 3 L38 residents', /Active · vouched by 3 of L38/i.test(wardenText))
   check("Setup: Teo's vouch (L36) shown but not counted", /\+1 other level, not counted/i.test(wardenText))
+  check('Setup: active warden received the rounds (encrypted to its key)', /Mrs\. Okafor/i.test(wardenText))
+
+  // Privacy: a fresh, unvouched device opening /warden sees a locked screen — no resident names.
+  const fresh = await open(`/warden?level=38&device=fresh${Date.now().toString(36)}`, 'fresh-warden')
+  await fresh.waitForTimeout(2000)
+  const freshText = await txt(fresh.locator('body'))
+  const leaked = ['Okafor', 'Brandt', 'Halvorsen', 'Aziz', '38-221', '38-305', 'Mara', 'Ilan'].filter((n) => has(freshText, n))
+  check('Privacy: unvouched warden device is locked (NOT ACTIVE · 0/3, key shown)', /Not active · 0\/3 vouches/i.test(freshText) && /[0-9A-F]{4}·[0-9A-F]{4}/i.test(freshText))
+  check('Privacy: no resident names, units or warden actions visible', leaked.length === 0 && (await fresh.getByRole('button', { name: /Confirm|Check in|Visited/ }).count()) === 0, leaked.join(', '))
+  await fresh.close()
 
   // Step 1–2: check-ins, family okay
   // I'M OKAY, then SEND NOW (skip the optional details) = the default check-in.

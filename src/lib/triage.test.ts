@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { triage } from './triage'
-import { demoRoster, type CareEntry } from './wardenDb'
+import type { CareEntry } from './wardenDb'
+import { demoRoster } from '../sim/demoRounds'
 
 const care = (unit: string, tick: number, okay: boolean, symptoms: CareEntry['symptoms'] = [], mood = 3): CareEntry => ({
   type: 'care', level: 38, unit, okay, symptoms, mood, tick, via: 'terminal', receivedAt: 0,

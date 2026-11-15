@@ -1,8 +1,9 @@
-// Warden's device storage. Holds the block roster (people the warden looks after, many without
-// devices) and care notes received over the sealed care channel. Never leaves this device.
+// Warden device storage. Rounds (names, units, notes, "vulnerable") and care notes are kept ONLY as
+// records encrypted to this device's own warden key: the device decrypts them in memory with its
+// non-extractable private key. Nothing about residents is stored in readable form.
 import Dexie, { type EntityTable } from 'dexie'
 import type { CarePayload } from './care'
-import type { PubJwk } from './wardenCrypto'
+import type { PubJwk, SealedToKey } from './wardenCrypto'
 
 export interface RosterEntry {
   unit: string
@@ -17,7 +18,7 @@ export interface RosterEntry {
 }
 
 export interface CareEntry extends CarePayload {
-  id?: number
+  id?: number | string
   receivedAt: number
 }
 
@@ -31,25 +32,22 @@ export interface WardenKeys {
   encPub: PubJwk
 }
 
+/** An encrypted record (random id, so ids reveal nothing), sealed to this device's own encryption key. */
+export interface VaultRecord {
+  id: string
+  sealed: SealedToKey
+}
+
 export type WardenDB = Dexie & {
-  roster: EntityTable<RosterEntry, 'unit'>
-  care: EntityTable<CareEntry, 'id'>
   keys: EntityTable<WardenKeys, 'id'>
+  vault: EntityTable<VaultRecord, 'id'>
 }
 
 export function openWardenDb(deviceId: string, level: number): WardenDB {
   const db = new Dexie(`lantern-warden-${deviceId}-L${level}`) as WardenDB
   db.version(1).stores({ roster: 'unit', care: '++id, unit, tick' })
   db.version(2).stores({ keys: 'id' })
+  // v3: plaintext roster/care tables dropped; everything about residents lives encrypted in `vault`.
+  db.version(3).stores({ roster: null, care: null, vault: 'id' })
   return db
-}
-
-/** Demo roster for a fresh warden device. Unit 221 is the one used in the terminal demo. */
-export function demoRoster(level: number): RosterEntry[] {
-  return [
-    { unit: `${level}-221`, name: 'Mrs. Okafor', age: 84, note: 'No device. On oxygen; uses the level terminal.', vulnerable: true, hasDevice: false },
-    { unit: `${level}-305`, name: 'Mr. Brandt', age: 79, note: 'No device, hard of hearing. Knock loudly.', vulnerable: true, hasDevice: false },
-    { unit: `${level}-117`, name: 'Dee Halvorsen', age: 41, note: 'Phone broken since the last flood.', vulnerable: false, hasDevice: false },
-    { unit: `${level}-402`, name: 'The Aziz twins', age: 7, note: 'Children; parent works double shifts.', vulnerable: true, hasDevice: false },
-  ]
 }

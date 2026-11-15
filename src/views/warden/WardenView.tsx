@@ -70,6 +70,11 @@ function Warden({ level }: { level: number }) {
   }, [level, start, stop])
 
   const net = world ? isNetworkUp(world, level) : true
+
+  // Not vouched (yet): a locked screen. No names, units, rounds, care notes or ledger actions —
+  // and none of that data exists on this device anyway: it's only ever sent encrypted to active wardens.
+  if (!me.active) return <LockedWarden level={level} badge={badge} fp={me.fp} same={me.same} other={me.other} running={running} />
+
   const urgent = rows.filter((r) => r.status === 'needs-help').length
   const watch = rows.filter((r) => r.status === 'unwell' || r.status === 'missing').length
 
@@ -305,5 +310,61 @@ function AddPersonCard({ level }: { level: number }) {
         </Button>
       </form>
     </Card>
+  )
+}
+
+function LockedWarden({
+  level,
+  badge,
+  fp,
+  same,
+  other,
+  running,
+}: {
+  level: number
+  badge: string
+  fp: string
+  same: number
+  other: number
+  running: boolean
+}) {
+  return (
+    <Shell view={`warden · L${level}`} aside={<Trust tone="warn">Locked</Trust>}>
+      <div className="mx-auto max-w-xl space-y-3">
+        <Sign sub={badge ? `Warden ${badge} · this device` : 'Warden · this device'}>Level {level} · warden</Sign>
+        <section aria-label="Warden status" className="border-2 border-warn">
+          <div className="px-3 py-3">
+            <StateTag state="watch" className="text-2xl">
+              {running ? `Not active · ${same}/${VOUCHES_REQUIRED} vouches` : 'Starting…'}
+            </StateTag>
+            {other > 0 && (
+              <div className="mt-1">
+                <Trust tone="muted">+{other} other level, not counted</Trust>
+              </div>
+            )}
+          </div>
+        </section>
+        <section aria-label="This device's warden key" className="border-2 border-hollow-700 bg-black px-3 py-4 text-center">
+          <div className="font-mono text-sm tracking-[0.15em] text-hollow-300 uppercase">Warden key</div>
+          <div className="font-mono text-5xl font-bold tracking-[0.12em] text-lamp">{fp ? shortFp(fp) : '····'}</div>
+          <div className="mt-1 font-mono text-sm tracking-wider text-hollow-300 uppercase">Neighbours check this in person</div>
+        </section>
+        <section aria-label="How to activate" className="border-2 border-hollow-700 bg-hollow-900 p-3">
+          <h2 className="font-mono text-sm font-bold tracking-[0.12em] text-lamp uppercase">To activate</h2>
+          <ol className="mt-2 list-decimal space-y-1 pl-5 text-base">
+            <li>Ask {VOUCHES_REQUIRED} residents of Level {level} to vouch for you.</li>
+            <li>
+              On their phone: <b>Wardens · L{level}</b> → check the key matches <b className="font-mono">{fp ? shortFp(fp) : '…'}</b> →{' '}
+              <b>Vouch</b>.
+            </li>
+            <li>This screen unlocks when {VOUCHES_REQUIRED} have vouched.</li>
+          </ol>
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+            <Trust>Rounds sent only to active wardens</Trust>
+            <Trust>Encrypted to warden keys</Trust>
+          </div>
+        </section>
+      </div>
+    </Shell>
   )
 }

@@ -14,7 +14,9 @@ import { simulatedBallot } from '../sim/votes'
 import type { VoteBody, VouchBody } from './mesh'
 import { DEMO_WARDEN_BADGE, DEMO_WARDEN_LEVEL } from './demoVouch'
 import { fingerprint, generateSigningKeys, msg, sign } from './wardenCrypto'
-import { feedRegistry, useWardenRegistry, vouchPacketId } from './wardenRegistry'
+import { feedRegistry, useWardenRegistry, vouchPacketId, wardenStatuses } from './wardenRegistry'
+import { shareRoster } from './rounds'
+import { demoRoster } from '../sim/demoRounds'
 
 const LOG_KEY = 'lantern-standin-log-v1'
 /** Keep this many hours of sent batches (matches the ledger's baseline window). */
@@ -179,6 +181,22 @@ export function startRelays(getWorld: () => World): RelayFleet {
     void check()
   })()
 
+  // DEMO SETUP (src/sim/demoRounds.ts): the level phone holds the block's existing rounds book and
+  // hands it over — encrypted to the warden's key — only once that warden key is ACTIVE.
+  const roundsSentTo = new Set<string>()
+  const handOverRounds = () => {
+    if (stopped) return
+    const reg = useWardenRegistry.getState()
+    for (const s of wardenStatuses(Object.values(reg.wardens), Object.values(reg.vouches))) {
+      if (!s.active || roundsSentTo.has(s.warden.fp)) continue
+      roundsSentTo.add(s.warden.fp)
+      const lvl = s.warden.level
+      void shareRoster(nodes[lvl - 1], lvl, demoRoster(lvl).map((entry) => ({ entry, updatedAt: 0 })), [s.warden])
+    }
+  }
+  const unsubRounds = useWardenRegistry.subscribe(handOverRounds)
+  handOverRounds()
+
   // At the start of a fresh world, each level phone shares the last 12 hours it already holds.
   const w0 = getWorld()
   if (w0.tick === 0 && !log.some((s) => s.id.endsWith('-backfill'))) backfill(w0)
@@ -188,6 +206,7 @@ export function startRelays(getWorld: () => World): RelayFleet {
     stop: () => {
       stopped = true
       unsubVouch?.()
+      unsubRounds()
       clearInterval(saver)
       nodes.forEach((n) => n.close())
     },

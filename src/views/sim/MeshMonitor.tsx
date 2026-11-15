@@ -49,7 +49,7 @@ export function MeshMonitor() {
                         : b.kind === 'vouch'
                           ? `vouch · resident of L${b.voucherLevel} vouches for warden ${b.wardenFp.slice(0, 8)}`
                           : b.kind === 'care-sealed'
-                            ? `care note · encrypted to warden ${b.to.slice(0, 8)}`
+                            ? `warden note · encrypted to warden ${b.to.slice(0, 8)}`
                             : `sealed · encrypted · tag ${b.tag}`,
           originLevel: packet.path[0].level,
           firstSeen: Date.now(),
