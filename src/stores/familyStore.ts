@@ -68,7 +68,7 @@ const currentTick = () => getWorld()?.tick ?? 0
 
 async function sendFamily(c: Ctx, payload: FamilyPayload): Promise<Packet> {
   const sealed = await sealJson(c.key, payload)
-  return c.node.send({ kind: 'family', tag: c.key.tag, ...sealed })
+  return c.node.send({ kind: 'sealed', tag: c.key.tag, ...sealed })
 }
 
 export const useFamily = create<FamilyState>((set, get) => ({
@@ -95,6 +95,7 @@ export const useFamily = create<FamilyState>((set, get) => ({
         set({ alerts: { ...get().alerts, [body.level]: { ...body, route: p.path, receivedAt: Date.now() } } })
         return
       }
+      if (body.kind !== 'sealed') return
       if (body.tag !== c.key.tag) return // someone else's family: opaque to us, but we still relayed it
       const msg = await openJson<FamilyPayload>(c.key, body.iv, body.data)
       if (!msg || msg.memberId === c.profile.memberId) return

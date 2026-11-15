@@ -25,6 +25,7 @@ export function MeshMonitor() {
     const ch = new BroadcastChannel(MESH_CHANNEL)
     ch.onmessage = (e: MessageEvent<Frame>) => {
       const { packet } = e.data
+      if (!packet) return // beacon
       let s = seen.current.get(packet.id)
       if (!s) {
         const b = packet.body
@@ -33,7 +34,11 @@ export function MeshMonitor() {
           label:
             b.kind === 'alert'
               ? `alert · L${b.level} ${b.band}${b.band === 'warning' || b.band === 'critical' ? ` ${b.riskPct}%` : ''}`
-              : `family · encrypted · tag ${b.tag}`,
+              : b.kind === 'summary'
+                ? `summary · L${b.level} · ${b.counts.reports} reports (${b.source})`
+                : b.kind === 'verify'
+                  ? `warden ${b.badge} ${b.confirmed ? 'confirms' : 'disputes'} ${b.claim} on L${b.level}`
+                  : `sealed · encrypted · tag ${b.tag}`,
           originLevel: packet.path[0].level,
           firstSeen: Date.now(),
           frames: 0,
