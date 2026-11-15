@@ -26,6 +26,7 @@ describe('buildLedger', () => {
   })
 
   it('holds back a spoofed batch until a warden confirms', () => {
+    expect(anomalyReason({ ...batch(5, 99, 150, 5), hours: 12 })).toBeNull() // 12h level-phone backfill is fine
     const spoof = { ...batch(5, 99, 300, 290), source: 'unknown' as const }
     expect(anomalyReason(spoof)).toBeTruthy()
     const held = buildLedger([spoof], {}, [], 100)

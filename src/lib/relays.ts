@@ -33,6 +33,7 @@ export function startRelays(getWorld: () => World): RelayFleet {
         level: l.level,
         tick: w.tick,
         source: 'standin',
+        hours,
         counts,
         conditions: { temperature: l.temperature, air: l.airQuality, powerOut: l.blackout, population: l.population },
       },

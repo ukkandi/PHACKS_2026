@@ -67,6 +67,8 @@ export interface SummaryBody {
   /** Simulated hour the reports were made. */
   tick: number
   source: ReportSource
+  /** Hours of check-ins this batch covers (default 1). */
+  hours?: number
   counts: ReportCounts
   /** Level-meter readings, attached by devices that have them (stand-in phones). */
   conditions?: LevelConditions

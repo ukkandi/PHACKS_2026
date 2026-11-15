@@ -7,7 +7,7 @@ import { LEVEL_COUNT } from '../../sim/types'
 const PRESETS = [
   { name: 'Mara', level: 38, unit: '38-114' },
   { name: 'Teo', level: 36, unit: '36-207' },
-  { name: 'Grandpa Ilan', level: 12, unit: '12-031' },
+  { name: 'Ilan', level: 12, unit: '12-031' },
 ]
 const DEMO_FAMILY = 'ORIN-7'
 

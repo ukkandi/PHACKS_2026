@@ -24,9 +24,17 @@ export const MIN_REPORTS = 20
 export const OUTBREAK_Z = 3
 export const WATCH_Z = 2
 
+/** Reports needed before a level's own history is trusted as its baseline. */
+export const MIN_BASELINE = 200
+/** Pseudo-reports of the Hollow-wide rate mixed into a level's history (shrinkage against noise). */
+const SHRINK = 100
+/** Never test against a baseline below this: tiny baselines make any blip look like an outbreak. */
+const FLOOR = 0.02
+
 export function detectOutbreak(current: Tally, baseline: Tally | null, hollowMedianRate: number): OutbreakResult {
-  const useHistory = baseline !== null && baseline.n >= 50
-  const p0 = Math.max(0.01, useHistory ? baseline.k / baseline.n : hollowMedianRate)
+  const useHistory = baseline !== null && baseline.n >= MIN_BASELINE
+  const prior = Math.max(FLOOR, hollowMedianRate)
+  const p0 = Math.max(FLOOR, useHistory ? (baseline.k + SHRINK * prior) / (baseline.n + SHRINK) : prior)
   const baselineSource = useHistory ? 'history' : 'hollow-median'
   const n = current.n
   const rate = n > 0 ? current.k / n : 0

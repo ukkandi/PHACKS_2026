@@ -8,12 +8,17 @@ import { applyAction, createWorld, tickWorld } from '../sim/world'
 
 describe('detectOutbreak', () => {
   it('flags a big, well-sampled jump over baseline', () => {
-    const r = detectOutbreak({ n: 80, k: 14 }, { n: 300, k: 15 }, 0.04)
+    const r = detectOutbreak({ n: 150, k: 30 }, { n: 400, k: 20 }, 0.04)
     expect(r.status).toBe('outbreak')
     expect(r.baselineSource).toBe('history')
   })
   it('stays quiet within noise', () => {
-    expect(detectOutbreak({ n: 80, k: 5 }, { n: 300, k: 15 }, 0.04).status).toBe('normal')
+    expect(detectOutbreak({ n: 150, k: 8 }, { n: 400, k: 20 }, 0.04).status).toBe('normal')
+  })
+  it('a small, noisy history is not trusted as the baseline', () => {
+    const r = detectOutbreak({ n: 150, k: 7 }, { n: 75, k: 1 }, 0.04)
+    expect(r.baselineSource).toBe('hollow-median')
+    expect(r.status).toBe('normal')
   })
   it('refuses to judge on too few reports', () => {
     expect(detectOutbreak({ n: 5, k: 4 }, null, 0.04).status).toBe('insufficient')

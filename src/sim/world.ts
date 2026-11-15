@@ -74,7 +74,7 @@ export function createWorld(seed = DEFAULT_SEED): World {
     rngState: rng.state,
     tick: 0,
     globalNetworkDown: false,
-    activeUsers: 6000,
+    activeUsers: 12000,
     levels,
     log: [{ tick: 0, text: 'Simulation started. All levels nominal.' }],
   }

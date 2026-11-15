@@ -24,8 +24,8 @@ export interface StoredAlert extends AlertBody {
 export const WINDOW = 12
 /** Baseline window: hours [now - BASELINE_FROM, now - WINDOW). */
 export const BASELINE_FROM = 72
-/** Largest batch one device may plausibly send (stand-in phones batch a few hours of neighbours). */
-export const MAX_BATCH = 60
+/** Most check-ins one device can plausibly have collected per hour (a level phone batching its neighbours). */
+export const MAX_PER_HOUR = 25
 
 export type Confidence = 'low' | 'medium' | 'high'
 
@@ -61,7 +61,8 @@ export interface LedgerView {
 export function anomalyReason(s: SummaryBody): string | null {
   if (!countsAreConsistent(s.counts)) return 'Counts are internally inconsistent.'
   if (s.source === 'unknown') return 'Sender did not identify as a resident, terminal, warden or level phone.'
-  if (s.counts.reports > MAX_BATCH) return `${s.counts.reports} reports in one packet from a single device (max ${MAX_BATCH}).`
+  const max = MAX_PER_HOUR * Math.min(24, Math.max(1, s.hours ?? 1))
+  if (s.counts.reports > max) return `${s.counts.reports} reports in one packet from a single device (max ${max}).`
   if ((s.source === 'resident' || s.source === 'terminal' || s.source === 'warden') && s.counts.reports !== 1)
     return 'A personal check-in must count exactly one report.'
   return null
