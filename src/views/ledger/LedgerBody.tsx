@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Button, Card, SimTag } from '../../components/ui'
-import { DEFAULT_PRIORITIES, type Purpose } from '../../lib/allocation'
 import { LEDGER_LEVEL, useLedger } from '../../stores/ledgerStore'
 import { tickLabel } from '../../sim/world'
 import { AllocationPanel } from './AllocationPanel'
@@ -9,36 +8,14 @@ import { OutbreakPanel } from './OutbreakPanel'
 import { useLedgerView } from './useLedgerView'
 import { WellbeingPanel } from './WellbeingPanel'
 
-const PRIORITY_KEY = 'lantern-priorities'
-
-function loadPriorities(): Purpose[] {
-  try {
-    const p = JSON.parse(localStorage.getItem(PRIORITY_KEY) ?? 'null') as Purpose[] | null
-    if (p && p.length === DEFAULT_PRIORITIES.length && DEFAULT_PRIORITIES.every((x) => p.includes(x))) return p
-  } catch {
-    // ignore
-  }
-  return DEFAULT_PRIORITIES
-}
-
-export function LedgerBody({ nodeId, readOnly = false }: { nodeId: string; readOnly?: boolean }) {
+export function LedgerBody({ nodeId }: { nodeId: string }) {
   const { start, stop, exportJson } = useLedger()
-  const [priorities, setPriorities] = useState<Purpose[]>(loadPriorities)
-  const { view, bulletin, plan, tick } = useLedgerView(priorities)
+  const { view, bulletin, plan, tick, tally } = useLedgerView()
 
   useEffect(() => {
     start({ nodeId })
     return stop
   }, [start, stop, nodeId])
-
-  const savePriorities = (p: Purpose[]) => {
-    setPriorities(p)
-    try {
-      localStorage.setItem(PRIORITY_KEY, JSON.stringify(p))
-    } catch {
-      // ignore
-    }
-  }
 
   const download = () => {
     const url = URL.createObjectURL(new Blob([exportJson()], { type: 'application/json' }))
@@ -74,7 +51,7 @@ export function LedgerBody({ nodeId, readOnly = false }: { nodeId: string; readO
       </p>
 
       <OutbreakPanel view={view} bulletin={bulletin} />
-      <AllocationPanel plan={plan} bulletin={bulletin} priorities={priorities} onPriorities={savePriorities} readOnly={readOnly} />
+      <AllocationPanel plan={plan} bulletin={bulletin} tally={tally} />
       <HollowMap view={view} bulletin={bulletin} />
       <div className="grid gap-4 md:grid-cols-2">
         <WellbeingPanel view={view} />

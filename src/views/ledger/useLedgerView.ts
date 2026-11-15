@@ -1,13 +1,17 @@
 import { useMemo } from 'react'
-import { recommendAllocation, type LevelNeedInput, type Purpose } from '../../lib/allocation'
+import { recommendAllocation, type LevelNeedInput } from '../../lib/allocation'
+import { tallyVotes } from '../../lib/votes'
 import { buildLedger } from '../../lib/ledger'
 import { useWorld } from '../../lib/worldFeed'
 import { directorateBulletin } from '../../sim/directorate'
 import { useLedger } from '../../stores/ledgerStore'
 
-export function useLedgerView(priorities: Purpose[]) {
+export function useLedgerView() {
   const world = useWorld()
-  const { summaries, alerts, verifies } = useLedger()
+  const { summaries, alerts, verifies, votes } = useLedger()
+  // Community-set priorities: Borda count of every level's latest ballot.
+  const tally = useMemo(() => tallyVotes(Object.values(votes)), [votes])
+  const priorities = tally.order
   const tick = world?.tick ?? summaries.reduce((m, s) => Math.max(m, s.tick), 0)
 
   const view = useMemo(() => buildLedger(summaries, alerts, verifies, tick), [summaries, alerts, verifies, tick])
@@ -29,5 +33,5 @@ export function useLedgerView(priorities: Purpose[]) {
     return recommendAllocation(inputs, bulletin?.reserveMW ?? 14, priorities)
   }, [view, bulletin, priorities])
 
-  return { world, view, bulletin, plan, tick }
+  return { world, view, bulletin, plan, tick, tally }
 }

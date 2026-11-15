@@ -19,7 +19,7 @@ export function DirectorateView() {
           network.
         </p>
       </section>
-      <LedgerBody nodeId={`directorate-${getDeviceId()}`} readOnly />
+      <LedgerBody nodeId={`directorate-${getDeviceId()}`} />
     </Shell>
   )
 }

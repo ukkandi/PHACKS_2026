@@ -38,6 +38,8 @@ export function MeshMonitor() {
                 ? `summary · L${b.level} · ${b.counts.reports} reports (${b.source})`
                 : b.kind === 'verify'
                   ? `warden ${b.badge} ${b.confirmed ? 'confirms' : 'disputes'} ${b.claim} on L${b.level}`
+                  : b.kind === 'vote'
+                    ? `ballot · L${b.level} ranks ${b.ranking.join(' > ')}`
                   : b.kind === 'sync-req'
                     ? 'catch-up request from a device that just joined'
                     : b.kind === 'sync'

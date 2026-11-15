@@ -11,6 +11,7 @@
 // net-connected device already received the same frame, so I only rebroadcast if a device that is
 // OFF the net may be within radio range of me (I know because offline devices send tiny beacons).
 import type { ReportCounts } from './reports'
+import type { Ballot } from './votes'
 
 export const MESH_CHANNEL = 'lantern-mesh'
 export const RADIO_RANGE = 2
@@ -107,7 +108,12 @@ export interface SyncRequestBody {
   want: SyncWant[]
 }
 
-export type SyncWant = 'summaries' | 'alerts' | 'verifies'
+export type SyncWant = 'summaries' | 'alerts' | 'verifies' | 'votes'
+
+/** A level's ranked ballot on the community priorities (air / water / cooling / light). */
+export interface VoteBody extends Ballot {
+  kind: 'vote'
+}
 
 export interface SyncBody {
   kind: 'sync'
@@ -116,9 +122,10 @@ export interface SyncBody {
   summaries?: (SummaryBody & { id: string })[]
   alerts?: AlertBody[]
   verifies?: (VerifyBody & { id: string })[]
+  votes?: VoteBody[]
 }
 
-export type MeshBody = SealedBody | AlertBody | SummaryBody | VerifyBody | SyncRequestBody | SyncBody
+export type MeshBody = SealedBody | AlertBody | SummaryBody | VerifyBody | VoteBody | SyncRequestBody | SyncBody
 
 export interface Packet {
   id: string

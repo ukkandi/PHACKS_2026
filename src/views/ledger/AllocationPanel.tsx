@@ -1,5 +1,6 @@
-import { Button, Card } from '../../components/ui'
-import { PURPOSE_LABEL, type AllocationPlan, type Purpose } from '../../lib/allocation'
+import { Card, SimTag } from '../../components/ui'
+import { PURPOSE_LABEL, type AllocationPlan } from '../../lib/allocation'
+import type { Tally } from '../../lib/votes'
 import type { DirectorateBulletin } from '../../sim/directorate'
 
 function matchShare(plan: AllocationPlan, bulletin: DirectorateBulletin): number {
@@ -18,21 +19,12 @@ function matchShare(plan: AllocationPlan, bulletin: DirectorateBulletin): number
 export function AllocationPanel({
   plan,
   bulletin,
-  priorities,
-  onPriorities,
-  readOnly,
+  tally,
 }: {
   plan: AllocationPlan
   bulletin: DirectorateBulletin | null
-  priorities: Purpose[]
-  onPriorities: (p: Purpose[]) => void
-  readOnly?: boolean
+  tally: Tally
 }) {
-  const move = (i: number, d: -1 | 1) => {
-    const next = [...priorities]
-    ;[next[i], next[i + d]] = [next[i + d], next[i]]
-    onPriorities(next)
-  }
   const used = plan.allocations.reduce((a, x) => a + x.mw, 0)
 
   return (
@@ -41,30 +33,27 @@ export function AllocationPanel({
       right={<span className="text-xs text-hollow-500">recommendation vs what the Directorate did</span>}
     >
       <div className="mb-4">
-        <div className="mb-1 text-xs text-hollow-500 uppercase">Published community priorities</div>
-        <ol className="flex flex-wrap gap-2">
-          {priorities.map((p, i) => (
-            <li key={p} className="flex items-center gap-1 rounded-lg border border-hollow-700 bg-hollow-800 px-2 py-1 text-sm">
+        <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-hollow-500 uppercase">
+          Community-set priorities
+          <span className="normal-case">
+            {tally.voters > 0
+              ? `· voted by ${tally.voters} of 40 levels${tally.round !== null ? ` (day ${tally.round + 1} ballot)` : ''}`
+              : '· no ballots received yet (using the founding order)'}
+          </span>
+          <SimTag>ballots</SimTag>
+        </div>
+        <ol className="flex flex-wrap gap-2" aria-label="Priorities in voted order">
+          {tally.order.map((p, i) => (
+            <li key={p} className="rounded-lg border border-hollow-700 bg-hollow-800 px-3 py-1 text-sm">
               <span className="font-bold text-lamp">#{i + 1}</span> {p}
-              {!readOnly && (
-                <span className="ml-1 flex">
-                  <Button tone="ghost" className="!min-h-8 !px-2" aria-label={`Raise ${p}`} disabled={i === 0} onClick={() => move(i, -1)}>
-                    ↑
-                  </Button>
-                  <Button
-                    tone="ghost"
-                    className="!min-h-8 !px-2"
-                    aria-label={`Lower ${p}`}
-                    disabled={i === priorities.length - 1}
-                    onClick={() => move(i, 1)}
-                  >
-                    ↓
-                  </Button>
-                </span>
-              )}
+              {tally.voters > 0 && <span className="ml-1 text-xs text-hollow-500">{tally.points[p]} pts</span>}
             </li>
           ))}
         </ol>
+        <p className="mt-1 text-xs text-hollow-500">
+          Each level ranks air, water, cooling and light once a day; ballots are tallied by Borda count (1st = 3 points) and
+          anyone can recount them from the raw data.
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

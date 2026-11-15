@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Shell } from '../../components/Shell'
 import { Badge, Button, Card, type BadgeTone } from '../../components/ui'
-import { DEFAULT_PRIORITIES } from '../../lib/allocation'
 import { getDeviceId } from '../../lib/device'
 import { triage, type TriageRow } from '../../lib/triage'
 import { useWorld } from '../../lib/worldFeed'
@@ -125,7 +124,7 @@ function Warden({ level }: { level: number }) {
 
 function VerifyCard({ level }: { level: number }) {
   const verify = useWarden((s) => s.verify)
-  const { view } = useLedgerView(DEFAULT_PRIORITIES)
+  const { view } = useLedgerView()
   const l = view.levels[level - 1]
   const [sent, setSent] = useState<string | null>(null)
   const act = (claim: 'outbreak' | 'water' | 'reports', confirmed: boolean, note: string) => {

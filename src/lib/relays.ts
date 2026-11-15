@@ -10,6 +10,8 @@ import { MeshNode, type Packet, type SummaryBody } from './mesh'
 import { LEVEL_COUNT, type World } from '../sim/types'
 import { isNetworkUp } from '../sim/world'
 import { STANDIN_EVERY, standInCounts, standInDue } from '../sim/standin'
+import { simulatedBallot } from '../sim/votes'
+import type { VoteBody } from './mesh'
 
 const LOG_KEY = 'lantern-standin-log-v1'
 /** Keep this many hours of sent batches (matches the ledger's baseline window). */
@@ -36,6 +38,9 @@ export function startRelays(getWorld: () => World): RelayFleet {
   const emitter = new AlertEmitter()
   const answered = new Set<string>()
   let lastTick = -1
+  /** Latest ballot each level phone has cast. */
+  const votes = new Map<number, VoteBody>()
+  let lastRound = -1
   let log: Logged[] = loadLog(getWorld().seed)
   let dirty = false
 
@@ -52,6 +57,7 @@ export function startRelays(getWorld: () => World): RelayFleet {
         from: 'level-phones',
         summaries: b.want.includes('summaries') ? log.filter((s) => s.tick <= w.tick) : undefined,
         alerts: b.want.includes('alerts') ? w.levels.map((l) => alertForLevel(l, w.tick)) : undefined,
+        votes: b.want.includes('votes') ? [...votes.values()] : undefined,
       })
     }, 100)
   }
@@ -88,12 +94,24 @@ export function startRelays(getWorld: () => World): RelayFleet {
   const onWorld = (w: World) => {
     const newHour = w.tick !== lastTick
     if (w.tick < lastTick) {
-      // World was reset: forget the old world's batches and start again.
+      // World was reset: forget the old world's batches and votes and start again.
       log = []
+      votes.clear()
+      lastRound = -1
       backfill(w)
     }
     lastTick = w.tick
     if (newHour) log = log.filter((s) => s.tick <= w.tick && w.tick - s.tick < LOG_HOURS)
+    // Each level votes on the community priorities once per simulated day.
+    const round = Math.floor(w.tick / 24)
+    if (round !== lastRound) {
+      lastRound = round
+      nodes.forEach((node, i) => {
+        const v: VoteBody = { kind: 'vote', ...simulatedBallot(w.seed, w.levels[i], round) }
+        votes.set(v.level, v)
+        node.send(v, { id: `vote-${w.seed}-L${v.level}-r${round}` })
+      })
+    }
     nodes.forEach((node, i) => {
       const l = w.levels[i]
       const a = alertForLevel(l, w.tick)
