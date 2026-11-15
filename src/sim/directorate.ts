@@ -32,8 +32,8 @@ export const ACK_DELAY = 4
 export function directorateBulletin(world: World): DirectorateBulletin {
   const levels: OfficialLevel[] = world.levels.map((l) => ({
     level: l.level,
-    // Report the normal baseline faithfully, but only ~15% of anything above it.
-    symptomRate: Math.min(l.symptomRate, l.symptomBaseline) * 0.95 + Math.max(0, l.symptomRate - l.symptomBaseline) * 0.15,
+    // Only "clinic-confirmed" cases: most of the baseline, and barely any of a new outbreak.
+    symptomRate: Math.min(l.symptomRate, l.symptomBaseline) * 0.85 + Math.max(0, l.symptomRate - l.symptomBaseline) * 0.08,
     water: l.waterQuality < 25 ? 'advisory' : 'safe',
     power: l.blackout && l.blackoutSince !== null && world.tick - l.blackoutSince >= ACK_DELAY ? 'planned maintenance' : 'normal',
   }))

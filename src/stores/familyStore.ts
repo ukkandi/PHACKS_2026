@@ -1,7 +1,9 @@
 // The resident device's mesh presence: family status + messages (encrypted) and public alerts.
 import { create } from 'zustand'
 import { AlertEmitter, alertForLevel } from '../lib/alerts'
-import type { FamilyMember, FamilyMessage, LanternDB, Profile } from '../lib/db'
+import type { CheckIn, FamilyMember, FamilyMessage, LanternDB, Profile } from '../lib/db'
+import { careCode, type CarePayload } from '../lib/care'
+import { countsFromCheckIn } from '../lib/reports'
 import { deriveFamilyKey, openJson, sealJson, type FamilyKey } from '../lib/familyCrypto'
 import { MeshNode, type AlertBody, type Hop, type Link, type Packet } from '../lib/mesh'
 import { getWorld, subscribeWorld } from '../lib/worldFeed'
@@ -57,6 +59,8 @@ interface FamilyState {
   stop: () => void
   sendStatus: () => Promise<void>
   sendMessage: (text: string) => Promise<void>
+  /** Share a check-in: anonymous counts for the ledger; and, if help was asked for, a sealed note to the warden. */
+  shareCheckIn: (c: CheckIn) => Promise<void>
 }
 
 let ctx: Ctx | null = null
@@ -195,6 +199,37 @@ export const useFamily = create<FamilyState>((set, get) => ({
       lastCheckIn: c.getLastCheckIn(),
       sentTick: currentTick(),
     })
+  },
+
+  shareCheckIn: async (checkIn) => {
+    const c = ctx
+    if (!c) return
+    // Random delay so the anonymous summary can't be matched to this device by timing.
+    setTimeout(
+      () => {
+        ctx?.node.send(
+          { kind: 'summary', level: c.profile.level, tick: checkIn.tick, source: 'resident', counts: countsFromCheckIn(checkIn) },
+          { anonymous: true },
+        )
+      },
+      500 + Math.random() * 2500,
+    )
+    if (!checkIn.okay) {
+      const key = await deriveFamilyKey(careCode(c.profile.level))
+      const payload: CarePayload = {
+        type: 'care',
+        level: c.profile.level,
+        unit: c.profile.unit,
+        name: c.profile.name,
+        okay: false,
+        symptoms: checkIn.symptoms,
+        mood: checkIn.mood,
+        tick: checkIn.tick,
+        via: 'resident',
+      }
+      const sealed = await sealJson(key, payload)
+      c.node.send({ kind: 'sealed', tag: key.tag, ...sealed })
+    }
   },
 
   sendMessage: async (text) => {

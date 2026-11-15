@@ -72,7 +72,8 @@ function needsFor(l: LevelNeedInput): Need[] {
       why: `${Math.round(l.waterBadShare * 100)}% of recent check-ins report bad water.`,
     })
   }
-  if (l.temperature >= 44 || (l.powerOut && l.temperature >= 40)) {
+  // Deep levels normally run ~44 °C on working cooling; only flag real excursions.
+  if (l.temperature >= 46.5 || (l.powerOut && l.temperature >= 40)) {
     out.push({
       level: l.level,
       purpose: 'cooling',

@@ -217,7 +217,7 @@ export function applyAction(world: World, action: SimAction): World {
         w = updateLevel(
           w,
           level,
-          (l) => ({ outbreakLoad: Math.min(0.5, l.outbreakLoad + 0.12), symptomRate: Math.min(1, l.symptomRate + 0.06) }),
+          (l) => ({ outbreakLoad: Math.min(0.5, l.outbreakLoad + 0.12), symptomRate: Math.min(1, l.symptomRate + 0.1) }),
           `Level ${level}: fever and cough spreading.`,
         )
       }

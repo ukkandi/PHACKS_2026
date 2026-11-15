@@ -69,7 +69,15 @@ export interface SummaryBody {
   source: ReportSource
   counts: ReportCounts
   /** Level-meter readings, attached by devices that have them (stand-in phones). */
-  conditions?: { temperature: number; air: number; powerOut: boolean }
+  conditions?: LevelConditions
+}
+
+/** Public level-meter readings + census population. */
+export interface LevelConditions {
+  temperature: number
+  air: number
+  powerOut: boolean
+  population: number
 }
 
 export type ReportSource = 'resident' | 'terminal' | 'warden' | 'standin' | 'unknown'

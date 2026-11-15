@@ -19,6 +19,7 @@ export function ResidentView() {
   const { loaded, profile, load, deviceId, forgetDevice, db } = useResident()
   const world = useWorld()
   const sendStatus = useFamily((s) => s.sendStatus)
+  const shareCheckIn = useFamily((s) => s.shareCheckIn)
 
   useEffect(() => {
     void load()
@@ -73,7 +74,13 @@ export function ResidentView() {
           <WarningBanner world={world} level={profile.level} />
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-4">
-              <CheckInCard tick={tick} onCheckedIn={() => void sendStatus()} />
+              <CheckInCard
+                tick={tick}
+                onCheckedIn={(c) => {
+                  void sendStatus()
+                  void shareCheckIn(c)
+                }}
+              />
               <MessagesCard />
             </div>
             <div className="space-y-4">

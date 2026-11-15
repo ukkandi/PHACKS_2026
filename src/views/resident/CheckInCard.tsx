@@ -85,6 +85,11 @@ export function CheckInCard({ tick, onCheckedIn }: { tick: number; onCheckedIn?:
             I need help
           </button>
         </div>
+        {!okay && (
+          <p className="mt-2 text-sm text-danger">
+            Your family and your block warden will be told, with your unit number, so someone can come to you.
+          </p>
+        )}
       </fieldset>
 
       <fieldset className="mb-4">
@@ -157,6 +162,9 @@ export function CheckInCard({ tick, onCheckedIn }: { tick: number; onCheckedIn?:
       <Button tone="primary" className="min-h-14 w-full text-base" onClick={() => void submit()}>
         Check in
       </Button>
+      <p className="mt-2 text-xs text-hollow-500">
+        Stays on this device. The public ledger only receives anonymous counts for Level {profile.level}.
+      </p>
     </Card>
   )
 }
