@@ -25,7 +25,11 @@ const has = (text, needle) => text.toLowerCase().includes(needle.toLowerCase())
   check('Setup: ledger receives level phones', (await txt(ledger.locator('main'))).includes('40 / 40'))
 
   // Step 1–2: check-ins, family okay
-  for (const name of ['Mara', 'Teo', 'Ilan']) await res[name].getByRole('button', { name: 'Check in', exact: true }).click()
+  // I'M OKAY, then SEND NOW (skip the optional details) = the default check-in.
+  for (const name of ['Mara', 'Teo', 'Ilan']) {
+    await res[name].getByRole('button', { name: "I'm okay", exact: true }).click()
+    await res[name].getByRole('button', { name: 'Send now ▸' }).click()
+  }
   await res.Ilan.waitForTimeout(1500)
   const fam = await txt(res.Ilan.locator('section', { hasText: 'Family · ORIN-7' }))
   check('Step 2: Ilan sees Mara and Teo okay', /Mara .*Okay today/i.test(fam) && /Teo .*Okay today/i.test(fam))
@@ -35,21 +39,22 @@ const has = (text, needle) => text.toLowerCase().includes(needle.toLowerCase())
   let warnedAt = 0
   for (let h = 1; h <= 10 && !warnedAt; h++) { await step(1); if (await res.Mara.locator('[role=alert]').count()) warnedAt = h }
   const banner = warnedAt ? await txt(res.Mara.locator('[role=alert]')) : ''
-  check('Step 3: Mara gets a blackout warning with a time window', /Blackout likely on Level 38 in \d+–\d+ hours/.test(banner), banner.slice(0, 90))
+  check('Step 3: Mara gets a blackout warning with a time window', /Blackout risk · \d+–\d+ hours/i.test(banner), banner.slice(0, 90))
   check('Step 3: warning shows a confidence label', /(low|medium|high) confidence/i.test(banner))
   await res.Ilan.waitForTimeout(600)
   check('Step 3: Ilan sees the L38 alert via the mesh', has(await txt(res.Ilan.locator('section', { hasText: 'Family · ORIN-7' })), 'L38 blackout'))
 
   // Step 4: blackout → messages over peer hops
   let hoursToTrip = 0
-  for (let h = 1; h <= 20; h++) { await step(1); if (await res.Mara.getByText('Blackout on Level 38').count()) { hoursToTrip = h; break } }
+  for (let h = 1; h <= 20; h++) { await step(1); if (await res.Mara.getByText('Blackout · Level 38').count()) { hoursToTrip = h; break } }
   check('Step 4: blackout hits after the warning', hoursToTrip > 0, `${hoursToTrip}h after warning`)
+  check('Step 4: Mara is in blackout mode', (await res.Mara.locator('.blackout-mode').count()) === 1)
   await res.Mara.waitForTimeout(500)
   check('Step 4: Mara is mesh-only', has(await txt(res.Mara.locator('header').first()), 'Mesh only'))
-  await res.Mara.getByRole('button', { name: 'Power is out here.' }).click()
+  await res.Mara.getByRole('button', { name: 'Power out', exact: true }).click()
   await res.Ilan.waitForTimeout(1500)
   const msgs = await txt(res.Ilan.locator('section', { hasText: 'Family messages' }))
-  check('Step 4: message reaches Ilan via a radio hop', /Power is out here\..*L38 ⇢radio L3[67]/.test(msgs), (msgs.match(/\d+ hops?: [^|]*?L12/) || [''])[0])
+  check('Step 4: message reaches Ilan via a radio hop', /Power is out here\..*L38 ⇢radio L3[67]/i.test(msgs), (msgs.match(/\d+ hops?: [^|]*?L12/) || [''])[0])
 
   // Step 5: outbreak vs official
   await sim.getByRole('button', { name: /Symptom spike/ }).click()

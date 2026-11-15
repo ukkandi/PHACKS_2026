@@ -1,14 +1,16 @@
 import { useEffect } from 'react'
 import { Shell } from '../../components/Shell'
-import { Button } from '../../components/ui'
+import { Button, Explain, Sign, Trust } from '../../components/ui'
+import { ADVICE } from '../../lib/alerts'
+import { sectorOf } from '../../lib/status'
 import { useWorld } from '../../lib/worldFeed'
 import { useFamily } from '../../stores/familyStore'
 import { useResident } from '../../stores/residentStore'
 import { tickLabel } from '../../sim/world'
-import { CheckInCard } from './CheckInCard'
+import { CheckInFlow } from './CheckInFlow'
 import { FamilyPanel } from './FamilyPanel'
 import { HistoryCard } from './HistoryCard'
-import { LocalConditions } from './LocalConditions'
+import { LevelStatus } from './LevelStatus'
 import { MeshAlertsCard } from './MeshAlertsCard'
 import { MeshStatus } from './MeshStatus'
 import { MessagesCard } from './MessagesCard'
@@ -52,61 +54,87 @@ export function ResidentView() {
   }, [profile])
 
   const tick = world?.tick ?? 0
+  const blackout = !!(profile && world?.levels[profile.level - 1]?.blackout)
+
+  const aside = (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+      {profile && <MeshStatus world={world} level={profile.level} />}
+      <Trust tone="muted">Device {deviceId}</Trust>
+      {world && <span className="font-mono text-xs text-lamp">{tickLabel(world.tick)}</span>}
+    </div>
+  )
+
+  if (!loaded || !profile) {
+    return (
+      <Shell view="resident" aside={aside}>
+        {loaded ? <Setup /> : <p className="font-mono text-xs uppercase">Opening local storage…</p>}
+      </Shell>
+    )
+  }
+
+  const sign = (
+    <Sign sub={`${profile.name} · unit ${profile.unit}`}>
+      Level {profile.level} · Sector {sectorOf(profile.unit)}
+    </Sign>
+  )
+
+  // Blackout mode: dim amber on black, only what matters — status, family, messages.
+  if (blackout) {
+    return (
+      <Shell view="resident · blackout" aside={aside} className="blackout-mode">
+        <div className="mx-auto max-w-2xl space-y-3">
+          <section role="alert" className="border-2 border-danger">
+            <div className="hazard h-3" aria-hidden />
+            <div className="flex items-start justify-between gap-2 px-3 py-2">
+              <div>
+                <h1 className="font-mono text-2xl font-bold tracking-[0.08em] text-danger uppercase">Blackout · Level {profile.level}</h1>
+                <div className="font-mono text-xs tracking-wider uppercase">
+                  Sector {sectorOf(profile.unit)} · {profile.name} · mesh running
+                </div>
+              </div>
+              <Explain label="What to do">
+                <ul className="list-disc space-y-1 pl-5">
+                  {ADVICE.blackout.map((a) => (
+                    <li key={a}>{a}</li>
+                  ))}
+                </ul>
+              </Explain>
+            </div>
+          </section>
+          <LevelStatus world={world} level={profile.level} compact />
+          <FamilyPanel tick={tick} />
+          <MessagesCard />
+        </div>
+      </Shell>
+    )
+  }
 
   return (
-    <Shell
-      view="resident"
-      aside={
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-          {profile && (
-            <span>
-              <strong>{profile.name}</strong>{' '}
-              <span className="text-hollow-300">
-                · L{profile.level} · unit {profile.unit}
-              </span>
-            </span>
-          )}
-          {profile && <MeshStatus world={world} level={profile.level} />}
-          <span className="font-mono text-xs text-hollow-500">device {deviceId}</span>
-          {world && <span className="font-mono text-xs text-lamp">{tickLabel(world.tick)}</span>}
-        </div>
-      }
-    >
-      {!loaded ? (
-        <p className="text-hollow-300">Opening local storage…</p>
-      ) : !profile ? (
-        <Setup />
-      ) : (
-        <div className="space-y-4">
-          <WarningBanner world={world} level={profile.level} />
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-4">
-              <CheckInCard
-                tick={tick}
-                onCheckedIn={(c) => {
-                  void sendStatus()
-                  void shareCheckIn(c)
-                }}
-              />
-              <MessagesCard />
-            </div>
-            <div className="space-y-4">
-              <FamilyPanel tick={tick} />
-              <LocalConditions world={world} level={profile.level} />
-              <MeshAlertsCard />
-              <HistoryCard />
-              <Button
-                tone="ghost"
-                onClick={() => {
-                  if (confirm('Erase everything Lantern stored on this device?')) void forgetDevice()
-                }}
-              >
-                Erase this device
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+    <Shell view="resident" aside={aside}>
+      <div className="mx-auto max-w-2xl space-y-3">
+        {sign}
+        <WarningBanner world={world} level={profile.level} />
+        <LevelStatus world={world} level={profile.level} />
+        <CheckInFlow
+          tick={tick}
+          onCheckedIn={(c) => {
+            void sendStatus()
+            void shareCheckIn(c)
+          }}
+        />
+        <FamilyPanel tick={tick} />
+        <MessagesCard />
+        <MeshAlertsCard />
+        <HistoryCard />
+        <Button
+          tone="ghost"
+          onClick={() => {
+            if (confirm('Erase everything Lantern stored on this device?')) void forgetDevice()
+          }}
+        >
+          Erase this device
+        </Button>
+      </div>
     </Shell>
   )
 }

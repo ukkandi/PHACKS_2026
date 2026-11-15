@@ -1,6 +1,6 @@
-import { Badge, Card } from '../../components/ui'
-import { timeAgo } from '../../lib/format'
+import { Card, StateTag, Trust } from '../../components/ui'
 import { hopCount } from '../../lib/mesh'
+import { ago } from '../../lib/status'
 import { useFamily } from '../../stores/familyStore'
 import { formatHoursRange } from '../../sim/predict'
 
@@ -14,25 +14,25 @@ export function MeshAlertsCard() {
     .sort((a, b) => Number(familyLevels.has(b.level)) - Number(familyLevels.has(a.level)) || b.riskPct - a.riskPct)
 
   return (
-    <Card title="Alerts from other levels">
+    <Card
+      title="Other levels"
+      help="Blackout alerts raised by phones on other levels, passed along the mesh. Family levels are listed first."
+    >
       {active.length === 0 ? (
-        <p className="text-sm text-hollow-500">No blackout alerts heard on the mesh.</p>
+        <StateTag state="normal">No alerts heard</StateTag>
       ) : (
         <ul className="space-y-2">
           {active.map((a) => (
-            <li key={a.level} className="text-sm">
-              <div className="flex items-center gap-2">
-                <Badge tone={a.band === 'warning' ? 'warn' : 'danger'}>L{a.level}</Badge>
-                <span>
-                  {a.band === 'blackout'
-                    ? 'Blackout in progress'
-                    : `Blackout risk ${a.riskPct}%${a.hoursRange ? `, in ${formatHoursRange(a.hoursRange)} (${a.confidence} confidence)` : ''}`}
-                </span>
-                {familyLevels.has(a.level) && <Badge tone="lamp">family here</Badge>}
+            <li key={a.level}>
+              <div className="flex flex-wrap items-center gap-3">
+                <StateTag state={a.band === 'warning' ? 'watch' : 'danger'}>
+                  L{a.level} · {a.band === 'blackout' ? 'blackout' : `risk · ${formatHoursRange(a.hoursRange)}`}
+                </StateTag>
+                {familyLevels.has(a.level) && <span className="font-mono text-[11px] text-lamp uppercase">family here</span>}
               </div>
-              <div className="font-mono text-[11px] text-hollow-500">
-                heard {timeAgo(a.receivedAt)} · {hopCount(a.route)} hops
-              </div>
+              <Trust>
+                Heard {ago(a.receivedAt)} · via {hopCount(a.route)} hops{a.band !== 'blackout' ? ` · ${a.confidence} conf.` : ''}
+              </Trust>
             </li>
           ))}
         </ul>

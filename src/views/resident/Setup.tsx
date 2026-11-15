@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Button, Card } from '../../components/ui'
+import { Button, Sign, Trust } from '../../components/ui'
 import { useResident } from '../../stores/residentStore'
 import { LEVEL_COUNT } from '../../sim/types'
 
@@ -11,7 +11,7 @@ export const PRESETS = [
 ]
 export const DEMO_FAMILY = 'ORIN-7'
 
-const input = 'min-h-11 w-full rounded-lg border border-hollow-700 bg-hollow-800 px-3 text-cream'
+const input = 'min-h-12 w-full border-2 border-hollow-700 bg-hollow-950 px-3 font-mono text-cream'
 
 export function Setup() {
   const saveProfile = useResident((s) => s.saveProfile)
@@ -27,55 +27,50 @@ export function Setup() {
   }
 
   return (
-    <div className="mx-auto max-w-md space-y-4">
-      <Card title="Set up this device">
-        <p className="mb-4 text-sm text-hollow-300">
-          Your details stay on this device. Lantern only ever shares anonymous level totals — and your
-          status with your family, encrypted with your family code.
-        </p>
-        <div className="mb-4">
-          <div className="mb-2 text-xs text-hollow-500 uppercase">Demo family “{DEMO_FAMILY}”</div>
-          <div className="flex flex-wrap gap-2">
-            {PRESETS.map((p) => (
-              <Button
-                key={p.name}
-                onClick={() => void saveProfile({ name: p.name, level: p.level, unit: p.unit, familyCode: DEMO_FAMILY })}
-              >
-                {p.name} · L{p.level}
-              </Button>
-            ))}
-          </div>
-        </div>
-        <form onSubmit={submit} className="space-y-3">
-          <label className="block text-sm">
-            Name (only your family sees it)
-            <input className={input} value={name} onChange={(e) => setName(e.target.value)} required />
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block text-sm">
-              Level
-              <select className={input} value={level} onChange={(e) => setLevel(Number(e.target.value))}>
-                {Array.from({ length: LEVEL_COUNT }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    Level {n}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-sm">
-              Unit
-              <input className={input} value={unit} onChange={(e) => setUnit(e.target.value)} placeholder={`${level}-000`} />
-            </label>
-          </div>
-          <label className="block text-sm">
-            Family code (shared secret)
-            <input className={input} value={familyCode} onChange={(e) => setFamilyCode(e.target.value)} />
-          </label>
-          <Button type="submit" tone="primary" className="w-full">
-            Start
+    <div className="mx-auto max-w-md space-y-3">
+      <Sign sub="Set up this device">New device</Sign>
+      <Trust>Stored on this device only</Trust>
+      <div className="font-mono text-[11px] tracking-[0.15em] text-hollow-300 uppercase">Demo family {DEMO_FAMILY}</div>
+      <div className="grid gap-2">
+        {PRESETS.map((p) => (
+          <Button
+            key={p.name}
+            className="min-h-14 text-base"
+            onClick={() => void saveProfile({ name: p.name, level: p.level, unit: p.unit, familyCode: DEMO_FAMILY })}
+          >
+            {p.name} · L{p.level}
           </Button>
-        </form>
-      </Card>
+        ))}
+      </div>
+      <form onSubmit={submit} className="space-y-2 border-2 border-hollow-700 p-3">
+        <label className="block text-xs uppercase">
+          Name
+          <input className={input} value={name} onChange={(e) => setName(e.target.value)} required />
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block text-xs uppercase">
+            Level
+            <select className={input} value={level} onChange={(e) => setLevel(Number(e.target.value))}>
+              {Array.from({ length: LEVEL_COUNT }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>
+                  Level {n}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-xs uppercase">
+            Unit
+            <input className={input} value={unit} onChange={(e) => setUnit(e.target.value)} placeholder={`${level}-000`} />
+          </label>
+        </div>
+        <label className="block text-xs uppercase">
+          Family code
+          <input className={input} value={familyCode} onChange={(e) => setFamilyCode(e.target.value)} />
+        </label>
+        <Button type="submit" tone="primary" className="min-h-14 w-full">
+          Start
+        </Button>
+      </form>
     </div>
   )
 }

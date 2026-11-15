@@ -115,7 +115,7 @@ export function StatusTile({ label, state, word, value }: { label: string; state
       <div className="px-3 py-2">
         <div className="font-mono text-[11px] tracking-[0.15em] text-hollow-300 uppercase">{label}</div>
         <div className={`font-mono text-xl font-bold tracking-wide uppercase ${stateText[state]}`}>{word ?? STATE_WORD[state]}</div>
-        {value !== undefined && <div className="font-mono text-xs text-hollow-300">{value}</div>}
+        {value !== undefined && <div className="font-mono text-xs tracking-wider text-hollow-300 uppercase">{value}</div>}
       </div>
     </div>
   )

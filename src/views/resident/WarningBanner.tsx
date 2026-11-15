@@ -1,16 +1,11 @@
+import { Explain, StateTag } from '../../components/ui'
 import { ADVICE, alertBand } from '../../lib/alerts'
 import { formatHoursRange, predictBlackout } from '../../sim/predict'
 import type { World } from '../../sim/types'
 
-const CONFIDENCE_NOTE = {
-  high: 'Demand has climbed steadily; this window is reliable.',
-  medium: 'The trend is clear but could speed up or slow down.',
-  low: 'Early signal. Prepare anyway; the estimate will sharpen hourly.',
-} as const
-
 /**
- * Blackout warning for the resident's own level, computed ON THIS DEVICE from the level's
- * power-meter history (no server, no Directorate announcement needed).
+ * Blackout warning for this level, computed ON THIS DEVICE from the level's power-meter history.
+ * Status first; the reasoning and advice sit behind "?".
  */
 export function WarningBanner({ world, level }: { world: World | null; level: number }) {
   if (!world) return null
@@ -20,42 +15,47 @@ export function WarningBanner({ world, level }: { world: World | null; level: nu
 
   if (band === 'clear') {
     return p.riskPct >= 25 ? (
-      <p className="rounded-lg border border-hollow-700 bg-hollow-900 px-4 py-2 text-sm text-hollow-300">
-        Power watch, Level {level}: blackout risk {p.riskPct}%. {p.reason}
-      </p>
+      <div className="flex items-center justify-between border-2 border-warn px-3 py-1.5">
+        <StateTag state="watch">Power watch · risk {p.riskPct}%</StateTag>
+        <Explain label="Why power watch">{p.reason}</Explain>
+      </div>
     ) : null
   }
 
-  const blackout = band === 'blackout'
-  const tone = blackout || band === 'critical' ? 'border-danger bg-danger/15' : 'border-warn bg-warn/10'
-
+  const danger = band === 'blackout' || band === 'critical'
   return (
-    <section role="alert" className={`rounded-xl border-2 p-4 ${tone}`}>
-      <h2 className={`text-xl font-bold ${blackout || band === 'critical' ? 'text-danger' : 'text-warn'}`}>
-        {blackout
-          ? `Blackout on Level ${level}`
-          : `Blackout likely on Level ${level}${p.hoursRange ? ` in ${formatHoursRange(p.hoursRange)}` : ''}`}
-      </h2>
-      <p className="mt-1 text-sm">
-        {blackout ? 'Power and the Directorate network are down on your level.' : `Risk ${p.riskPct}%. ${p.reason}`}
-      </p>
-      {!blackout && p.hoursRange && (
-        <p className="mt-1 text-sm">
-          <span className="rounded border border-current px-1.5 py-0.5 text-xs font-semibold uppercase">
-            {p.confidence} confidence
-          </span>{' '}
-          <span className="text-hollow-300">{CONFIDENCE_NOTE[p.confidence]}</span>
-        </p>
-      )}
-      <ul className="mt-3 list-disc space-y-1 pl-5 text-sm">
-        {ADVICE[band].map((a) => (
-          <li key={a}>{a}</li>
-        ))}
-      </ul>
-      <p className="mt-3 text-xs text-hollow-300">
-        {blackout ? 'Detected' : 'Predicted'} on this device from Level {level}'s power meter. The Directorate has not
-        announced anything.
-      </p>
+    <section role="alert" className={`border-2 ${danger ? 'border-danger' : 'border-warn'}`}>
+      {danger && <div className="hazard h-3" aria-hidden />}
+      <div className="flex items-start justify-between gap-3 px-3 py-2">
+        <div>
+          <h2 className={`font-mono text-xl font-bold tracking-wide uppercase sm:text-2xl ${danger ? 'text-danger' : 'text-warn'}`}>
+            {band === 'blackout' ? `Blackout · Level ${level}` : `Blackout risk · ${formatHoursRange(p.hoursRange)}`}
+          </h2>
+          <div className="mt-0.5 flex flex-wrap gap-x-4 font-mono text-xs tracking-wider text-hollow-300 uppercase">
+            {band === 'blackout' ? (
+              <span>Power + net down</span>
+            ) : (
+              <>
+                <span>{p.confidence} confidence</span>
+                <span>Risk {p.riskPct}%</span>
+              </>
+            )}
+            <span>From level meter</span>
+          </div>
+        </div>
+        <Explain label="What to do">
+          <p className="mb-2">{band === 'blackout' ? 'Power and the Directorate network are down on your level.' : p.reason}</p>
+          <ul className="mb-2 list-disc space-y-1 pl-5">
+            {ADVICE[band].map((a) => (
+              <li key={a}>{a}</li>
+            ))}
+          </ul>
+          <p className="text-hollow-300">
+            {band === 'blackout' ? 'Detected' : 'Predicted'} on this device from Level {level}'s power meter. The Directorate
+            has not announced anything.
+          </p>
+        </Explain>
+      </div>
     </section>
   )
 }

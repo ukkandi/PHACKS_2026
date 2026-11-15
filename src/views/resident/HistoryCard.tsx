@@ -1,4 +1,4 @@
-import { Card } from '../../components/ui'
+import { Card, Trust } from '../../components/ui'
 import type { CheckIn } from '../../lib/db'
 import { useResident } from '../../stores/residentStore'
 import { tickLabel } from '../../sim/world'
@@ -14,9 +14,9 @@ function Spark({ values, max, color, label }: { values: number[]; max: number; c
   const d = values.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-16 w-full" role="img" aria-label={label}>
-      <path d={d} fill="none" stroke={color} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+      <path d={d} fill="none" stroke={color} strokeWidth={2} />
       {values.map((v, i) => (
-        <circle key={i} cx={x(i)} cy={y(v)} r={2.5} fill={color} />
+        <rect key={i} x={x(i) - 2} y={y(v) - 2} width={4} height={4} fill={color} />
       ))}
     </svg>
   )
@@ -44,34 +44,29 @@ export function HistoryCard() {
   const avgSleep = recent.reduce((a, c) => a + c.sleepHours, 0) / recent.length
   const insight = sleepMoodInsight(checkins.slice(0, 30))
   return (
-    <Card title="Your sleep & mood" right={<span className="text-xs text-hollow-500">only on this device</span>}>
-      <p className="mb-2 text-sm text-hollow-300">
-        Avg mood <strong className="text-cream">{avgMood.toFixed(1)}/5</strong> · avg sleep{' '}
-        <strong className="text-cream">{avgSleep.toFixed(1)}h</strong> over {recent.length} check-in
-        {recent.length > 1 ? 's' : ''}
-      </p>
-      {series.length >= 2 && (
-        <div className="mb-2 grid grid-cols-2 gap-3">
-          <div>
-            <div className="text-xs text-lamp">Mood (1–5)</div>
-            <Spark values={series.map((c) => c.mood)} max={5} color="#F2A33A" label={`Mood over your last ${series.length} check-ins`} />
-          </div>
-          <div>
-            <div className="text-xs text-data">Sleep (h)</div>
-            <Spark values={series.map((c) => c.sleepHours)} max={12} color="#5FA8D3" label={`Sleep over your last ${series.length} check-ins`} />
-          </div>
+    <Card
+      title="Your trend"
+      right={<Trust>Stored on this device</Trust>}
+      help={insight ?? 'After a few check-ins with different amounts of sleep, Lantern shows how sleep and mood move together — computed on this phone only.'}
+    >
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <div className="font-mono text-[11px] tracking-[0.15em] text-hollow-300 uppercase">Mood · avg</div>
+          <div className="font-mono text-2xl font-bold text-lamp">{avgMood.toFixed(1)}<span className="text-sm text-hollow-500">/5</span></div>
+          {series.length >= 2 && <Spark values={series.map((c) => c.mood)} max={5} color="#F2A33A" label={`Mood over your last ${series.length} check-ins`} />}
         </div>
-      )}
-      {insight && <p className="mb-2 text-sm">{insight}</p>}
-      <ul className="space-y-1 font-mono text-xs">
+        <div>
+          <div className="font-mono text-[11px] tracking-[0.15em] text-hollow-300 uppercase">Sleep · avg</div>
+          <div className="font-mono text-2xl font-bold text-data">{avgSleep.toFixed(1)}<span className="text-sm text-hollow-500"> h</span></div>
+          {series.length >= 2 && <Spark values={series.map((c) => c.sleepHours)} max={12} color="#5FA8D3" label={`Sleep over your last ${series.length} check-ins`} />}
+        </div>
+      </div>
+      <ul className="mt-2 space-y-0.5 font-mono text-[11px] uppercase">
         {recent.map((c) => (
           <li key={c.id} className="flex items-center gap-3">
-            <span className="w-28 text-hollow-500">{tickLabel(c.tick)}</span>
+            <span className="w-24 text-hollow-500">{tickLabel(c.tick)}</span>
             <span className={c.okay ? 'text-ok' : 'text-danger'}>{c.okay ? 'okay' : 'help'}</span>
-            <span aria-label={`mood ${c.mood}`} className="text-lamp">
-              {'■'.repeat(c.mood)}
-              <span className="text-hollow-700">{'■'.repeat(5 - c.mood)}</span>
-            </span>
+            <span className="text-hollow-300">m{c.mood}</span>
             <span className="text-hollow-300">{c.sleepHours}h</span>
             <span className="truncate text-hollow-500">{c.symptoms.join(', ')}</span>
           </li>
