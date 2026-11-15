@@ -2,7 +2,7 @@
 import { create } from 'zustand'
 import { AlertEmitter, alertForLevel } from '../lib/alerts'
 import type { CheckIn, FamilyMember, FamilyMessage, LanternDB, Profile } from '../lib/db'
-import { careCode, type CarePayload } from '../lib/care'
+import { sendCare } from '../lib/care'
 import { countsFromCheckIn } from '../lib/reports'
 import { deriveFamilyKey, openJson, sealJson, type FamilyKey } from '../lib/familyCrypto'
 import { MeshNode, type AlertBody, type Hop, type Link, type Packet } from '../lib/mesh'
@@ -215,8 +215,7 @@ export const useFamily = create<FamilyState>((set, get) => ({
       500 + Math.random() * 2500,
     )
     if (!checkIn.okay) {
-      const key = await deriveFamilyKey(careCode(c.profile.level))
-      const payload: CarePayload = {
+      await sendCare(c.node, {
         type: 'care',
         level: c.profile.level,
         unit: c.profile.unit,
@@ -226,9 +225,7 @@ export const useFamily = create<FamilyState>((set, get) => ({
         mood: checkIn.mood,
         tick: checkIn.tick,
         via: 'resident',
-      }
-      const sealed = await sealJson(key, payload)
-      c.node.send({ kind: 'sealed', tag: key.tag, ...sealed })
+      })
     }
   },
 

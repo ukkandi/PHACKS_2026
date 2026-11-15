@@ -31,7 +31,7 @@ export function detectOutbreak(current: Tally, baseline: Tally | null, hollowMed
   const n = current.n
   const rate = n > 0 ? current.k / n : 0
   if (n < MIN_REPORTS) {
-    return { status: 'insufficient', rate, baselineRate: p0, baselineSource, z: 0, n, reason: `Only ${n} reports — not enough to tell.` }
+    return { status: 'insufficient', rate, baselineRate: p0, baselineSource, z: 0, n, reason: `Only ${n} report${n === 1 ? "" : "s"} — not enough to tell.` }
   }
   const z = (rate - p0) / Math.sqrt((p0 * (1 - p0)) / n)
   const pct = (v: number) => `${(v * 100).toFixed(1)}%`
