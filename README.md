@@ -30,6 +30,7 @@ Every push to `main` redeploys. All demo tabs must be on the same site (same ori
 | `/ledger` | Everyone | Anonymous per-level numbers vs the Directorate's official ones; power allocation |
 | `/directorate` | Directorate | Exactly the public ledger, read-only |
 | `/sim` | **World Simulator — demo only, not part of Lantern** | Drives the fictional world |
+| `/demo` | **Demo launcher — demo only** | Reset & set up demo; opens every demo tab |
 
 Every browser tab is a separate device (own id, own IndexedDB). `?device=<name>` on `/resident` pins an identity.
 
@@ -37,14 +38,17 @@ Every browser tab is a separate device (own id, own IndexedDB). `?device=<name>`
 
 Total time about 6–7 minutes. The simulator clock stays **Paused** throughout; you advance it with **Step +1h**, so every run is the same.
 
-### Before you start (setup, ~1 min)
-Use one browser window. If you've run the demo before, open DevTools → Application → Clear site data first.
+### Before you start (setup, under 1 min)
+Use one browser window.
 
-1. Tab 1: open **`/ledger`**. Open it first so it hears every report.
-2. Tab 2: open **`/sim`**. The page says "World Simulator — demo only". Leave Target level on **Level 38**. The ledger now shows **40 / 40** levels reporting.
-3. Tabs 3–5: open **`/resident`** three times. Click **Mara · L38**, **Teo · L36**, and **Ilan · L12** respectively.
-4. Tab 6: open **`/terminal?level=38`**.
-5. Tab 7: open **`/warden?level=38`**.
+1. Open **`/demo`** (the **Demo launcher**, demo-only; it's also linked in the home page footer).
+2. Click **Reset & set up demo** → OK. This wipes all demo data in every open tab and puts the world at **Day 1, 00:00**, paused, with Level 38 selected.
+3. Click **Open all 8 tabs**. If your browser blocks pop-ups, allow them for the site and click again, or click the 8 numbered links one by one. **Order doesn't matter**: each tab catches up from the mesh when it opens.
+   - Tabs: Public ledger · World Simulator · Mara (L38) · Teo (L36) · Ilan (L12) · Level 38 terminal · Warden L38 · Directorate.
+   - The three resident tabs set themselves up as Mara, Teo and Ilan automatically.
+4. **Check:** the ledger shows **40 / 40** levels reporting and "voted by 40 of 40 levels" under Power reserve, and no outbreaks.
+
+To restart at any point: **World Simulator → Reset & set up demo** (or the same button on `/demo`). Every open tab reloads into the starting state.
 
 ### 1. Everyone checks in
 - In Mara's, Teo's and Ilan's tabs: click **Check in**. (Optionally set mood, sleep or symptoms first.)
@@ -65,7 +69,7 @@ Use one browser window. If you've run the demo before, open DevTools → Applica
 
 ### 4. Outbreak vs the official number
 - **World Simulator:** click **Symptom spike, levels 34–40**, then **Step +1h** 8 times.
-- **Show Ledger → Outbreak watch:** **Level 38 OUTBREAK** shows a Lantern figure of about **14%** with symptoms, "**based on ~157 reports**", next to a **Directorate official** figure of about **6%**, and the line "The official figure is 2.4× lower…". Levels 35, 39 and 40 are flagged too.
+- **Show Ledger → Outbreak watch:** **Level 38 OUTBREAK** shows a Lantern figure of about **22%** with symptoms, "**based on ~291 reports**", next to a **Directorate official** figure of about **6.4%**, and the line "The official figure is 3.4× lower…". All seven spiked levels (34–40) are marked OUTBREAK and no other level is (a stray "watch" elsewhere is normal noise).
 - Scroll to **The Hollow, level by level**: every row says how many reports it's based on. Click **L38** to see the sources.
 
 ### 5. Allocation: recommendation vs what the Directorate did
@@ -73,7 +77,7 @@ Use one browser window. If you've run the demo before, open DevTools → Applica
   - **Lantern recommends** ~3.9 MW to **Level 38 air pumps** first, with the reason in plain words and "Priority #1 (air)".
   - **Directorate actually did:** 2 MW for L38 corridor lighting (acknowledged 4h late, as "planned maintenance"), and the rest to **Levels 1–3 administrative districts**.
   - A low "% of the reserve went where the community's priorities say".
-- Optional: reorder the published priorities with ↑/↓ and watch the plan change.
+  - Above them: **Community-set priorities · voted by 40 of 40 levels** (air > water > cooling > light, with Borda points).
 - Optional: **World Simulator → Directorate powers L38 air pumps**. The ledger shows "Level 38 air pumps (emergency line)" and the match % goes up.
 
 ### 6. Terminal and warden: people without phones
@@ -81,7 +85,7 @@ Use one browser window. If you've run the demo before, open DevTools → Applica
 - **Warden tab:** **Mrs. Okafor · 38-221** is top of **Who to visit first**: "asked for help · breathing trouble · vulnerable".
 - **Warden:** on **Mr. Brandt** click **Check in for them** → **Submit check-in**. He now shows "via warden".
 - **Warden:** in **Verify the ledger · Level 38**, click **Confirm outbreak**.
-- **Show Ledger:** Level 38 now carries "**✓ confirmed by warden W-38-…**". Click **L38** in the level table: "Sources: N via level phones, 1 via terminal, 1 via warden".
+- **Show Ledger:** Level 38 now carries "**✓ confirmed by warden W-38-WAR**". Click **L38** in the level table: "Sources: N via level phones, 1 via terminal, 1 via warden".
 
 ### 7. Trust: a fake flood is held back
 - **World Simulator:** set Target level to **Level 5** and click **Rogue device: inject 300 fake reports on L5**.
@@ -96,10 +100,12 @@ Real logic, unit-tested and running in the browser:
 - **Blackout predictor:** compares each hour's load with the same hour yesterday, and gives a time window with a confidence label.
 - **Mesh:** gossip relaying with hop routes, TTL and dedup, plus selective relaying with offline beacons and anonymous origins.
 - **Encryption:** AES-GCM for family and care packets.
-- **Ledger:** aggregation of anonymous counts, outbreak z-test with a shrunk baseline, and anomaly hold-back.
+- **Ledger:** aggregation of anonymous counts, outbreak detection (two-proportion z-test against each level's own history), anomaly hold-back, and catch-up for late-joining devices.
+- **Community vote tally:** Borda count over each level's latest ballot.
 - **Allocation engine:** shares the reserve by community priorities.
 - **Care triage.**
 - **Per-device storage:** IndexedDB.
+- **Installable, works offline (PWA):** after one visit the whole app, fonts included, is cached; every route opens with no network.
 
 Simulated (marked `// SIMULATED:` in code):
 - **The world:** power, heat, air, water, illness (`src/sim/`).
@@ -109,14 +115,16 @@ Simulated (marked `// SIMULATED:` in code):
 - **The care-channel key:** derived from the level number. Production would encrypt to wardens' public keys.
 - **Warden badges:** unsigned. Production would sign them.
 - **Rogue device:** the fake-report injection is a simulated attack.
+- **The levels' ballots:** each level phone casts a deterministic simulated ballot once per simulated day (`src/sim/votes.ts`).
+- **Demo launcher and reset** (`/demo`, `src/lib/demoReset.ts`): demo tooling, not part of Lantern.
 
 ## Architecture
 
 | Path | What |
 |---|---|
 | `src/sim/` | Pure world model, blackout predictor, Directorate bulletin, stand-in reports (+ tests) |
-| `src/lib/mesh.ts` | Gossip mesh; packet kinds: `sealed`, `alert`, `summary`, `verify` |
-| `src/lib/ledger.ts`, `outbreak.ts`, `allocation.ts`, `triage.ts`, `reports.ts` | Pure product logic (+ tests) |
-| `src/lib/worldFeed.ts`, `relays.ts`, `spoof.ts` | Simulator plumbing (SIMULATED) |
+| `src/lib/mesh.ts` | Gossip mesh; packet kinds: `sealed`, `alert`, `summary`, `verify`, `vote`, `sync-req`, `sync` |
+| `src/lib/ledger.ts`, `outbreak.ts`, `allocation.ts`, `votes.ts`, `triage.ts`, `reports.ts` | Pure product logic (+ tests) |
+| `src/lib/worldFeed.ts`, `relays.ts`, `spoof.ts`, `demoReset.ts` | Simulator and demo plumbing (SIMULATED) |
 | `src/stores/` | Zustand stores: simulator, resident, family/mesh, ledger node, warden |
 | `src/views/` | One folder per route |
