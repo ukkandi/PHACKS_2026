@@ -52,6 +52,7 @@ Use one browser window.
    - Tabs: Public ledger · World Simulator · Mara (L38) · Teo (L36) · Ilan (L12) · L38 terminal · Warden L38 · Directorate.
    - The three resident tabs set themselves up as Mara, Teo and Ilan automatically.
 4. **Check:** the ledger's status line reads **0 DANGER · 0 WATCH · 40 NORMAL** (an occasional single WATCH is normal noise), with **● 40 / 40 levels reporting** and **voted by 40 of 40 levels** under Power reserve. If it still shows **○ 40 NO DATA**, the World Simulator tab hasn't loaded yet — it fills in within a second or two once it has.
+5. **Check:** the Warden tab reads **■ ACTIVE · VOUCHED BY 3 OF L38** (plus "+1 other level, not counted" — that's Teo on L36). Its key fingerprint is under the signage (**KEY XXXX·XXXX**); Mara's **WARDENS · L38** card shows the same key with **● YOU VOUCHED**.
 
 To restart at any point: **World Simulator → Reset & set up demo** (or the same button on `/`). Every open tab reloads into the starting state.
 
@@ -93,6 +94,8 @@ To restart at any point: **World Simulator → Reset & set up demo** (or the sam
 - **Warden:** on **MR. BRANDT** tap **CHECK IN** → **SEND**. He now shows **● LAST … VIA WARDEN**.
 - **Warden:** in **VERIFY LEDGER · L38**, tap **CONFIRM OUTBREAK**.
 - **Show Ledger:** Level 38 in OUTBREAK WATCH now carries **✓ CONFIRMED BY WARDEN W-38-WAR**. Click **L38** on the board: "Sources: N via level phones, 1 via terminal, 1 via warden".
+- **Impostor:** **World Simulator** (Target level still **Level 38**) → **Impostor warden confirms outbreak on L38**. It claims the badge W-38-WAR and signs correctly — but with a key no L38 resident vouched for.
+- **Show Ledger → HELD BACK:** **▲ L38 · W-38-WAR CONFIRMS OUTBREAK · UNVERIFIED WARDEN, REJECTED** (tap **?**: the key fingerprint and why). The genuine ✓ confirmation is unaffected.
 
 ### 7. Trust: a fake flood is held back
 - **World Simulator:** set Target level to **Level 5** and click **Rogue device: inject 300 fake reports on L5**.
@@ -106,7 +109,9 @@ To restart at any point: **World Simulator → Reset & set up demo** (or the sam
 Real logic, unit-tested and running in the browser:
 - **Blackout predictor:** compares each hour's load with the same hour yesterday, and gives a time window with a confidence label.
 - **Mesh:** gossip relaying with hop routes, TTL and dedup, plus selective relaying with offline beacons and anonymous origins.
-- **Encryption:** AES-GCM for family and care packets.
+- **Encryption:** AES-GCM for family packets (key from the family code).
+- **Warden authentication, no server:** each warden device makes real WebCrypto keys (ECDSA P-256 to sign, ECDH P-256 to receive), private keys non-extractable. A warden becomes active once **3 residents of its own level** vouch for its public key, each vouch signed by a key made on the resident's device (not an account). Every device checks every signature itself; the ledger ignores warden confirmations and check-ins that are unsigned, forged or from an unvouched key, and lists them as rejected.
+- **Care notes:** encrypted per note to each active warden's public key (ephemeral ECDH → AES-GCM); only that warden device can read them.
 - **Ledger:** aggregation of anonymous counts, outbreak detection (two-proportion z-test against each level's own history), anomaly hold-back, and catch-up for late-joining devices.
 - **Community vote tally:** Borda count over each level's latest ballot.
 - **Allocation engine:** shares the reserve by community priorities.
@@ -119,9 +124,10 @@ Simulated (marked `// SIMULATED:` in code):
 - **The Directorate's bulletin:** deliberately under-reports, acknowledges blackouts late, sends reserve upward (`src/sim/directorate.ts`).
 - **"Level phones":** one stand-in device per level, hosted by the World Simulator, relaying traffic and sending synthetic residents' anonymous counts (`src/lib/relays.ts`, `src/sim/standin.ts`).
 - **The radio layer:** all tabs share one BroadcastChannel. Links are allowed if both ends have the Directorate net, or if devices are within 2 levels.
-- **The care-channel key:** derived from the level number. Production would encrypt to wardens' public keys.
-- **Warden badges:** unsigned. Production would sign them.
-- **Rogue device:** the fake-report injection is a simulated attack.
+- **Demo pre-vouch** (`src/lib/demoVouch.ts`): Mara, Teo and two simulated L38 residents on the level phone vouch automatically for the first W-38-WAR key they hear. In real use a resident taps **VOUCH** after checking the key on the warden's screen in person.
+- **Rogue device and impostor warden:** the fake-report injection and the impostor confirmation are simulated attacks.
+
+Known limits of vouching (honest list): nothing stops someone with many devices from vouching many times (no Sybil resistance beyond "3 distinct device keys from that level"); there is no revocation yet; and a device trusts the level a voucher *claims* to be on.
 - **The levels' ballots:** each level phone casts a deterministic simulated ballot once per simulated day (`src/sim/votes.ts`).
 - **Demo launcher and reset** (`/demo`, `src/lib/demoReset.ts`): demo tooling, not part of Lantern.
 
