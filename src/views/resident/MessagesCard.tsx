@@ -45,7 +45,7 @@ export function MessagesCard() {
         {messages.map((m) => (
           <li key={m.id} className={`rounded-lg px-3 py-2 ${m.mine ? 'bg-lamp/10' : 'bg-hollow-800'}`}>
             <div className="text-xs text-hollow-300">
-              <strong className="text-white">{m.mine ? 'You' : m.name}</strong> · L{m.level} · {tickLabel(m.tick)}
+              <strong className="text-cream">{m.mine ? 'You' : m.name}</strong> · L{m.level} · {tickLabel(m.tick)}
             </div>
             <div>{m.text}</div>
             {!m.mine && (

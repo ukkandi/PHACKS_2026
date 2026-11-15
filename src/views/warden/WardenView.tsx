@@ -218,7 +218,7 @@ function AddPersonCard({ level }: { level: number }) {
           <input className={input} value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
         <label className="flex min-h-11 items-center gap-2">
-          <input type="checkbox" className="size-5 accent-amber-400" checked={vulnerable} onChange={(e) => setVulnerable(e.target.checked)} />
+          <input type="checkbox" className="size-5 accent-lamp" checked={vulnerable} onChange={(e) => setVulnerable(e.target.checked)} />
           Vulnerable (elderly, oxygen, children…)
         </label>
         <Button type="submit" tone="primary">

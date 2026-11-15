@@ -55,7 +55,7 @@ const txt = async (loc) => (await loc.innerText()).replace(/\s+/g, ' ')
   await step(8)
   await ledger.waitForTimeout(800)
   const ob = await txt(ledger.locator('section', { hasText: 'Outbreak watch' }).first())
-  const m = ob.match(/Level 38 OUTBREAK.*?LANTERN \(COMMUNITY\) ([\d.]+)%.*?based on (\d+) reports.*?DIRECTORATE OFFICIAL ([\d.]+)%/i)
+  const m = ob.match(/Level 38 OUTBREAK.*?LANTERN · COMMUNITY ([\d.]+)%.*?based on (\d+) reports.*?DIRECTORATE OFFICIAL ([\d.]+)%/i)
   check('Step 5: L38 outbreak flagged next to the lower official figure', !!m && +m[1] > 2 * +m[3], m ? `Lantern ${m[1]}% (${m[2]} reports) vs official ${m[3]}%` : ob.slice(0, 120))
 
   // Step 6: allocation vs Directorate

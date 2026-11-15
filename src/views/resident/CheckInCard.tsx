@@ -1,15 +1,16 @@
 import { useState } from 'react'
+import { MoodIcon } from '../../components/MoodIcon'
 import { Button, Card } from '../../components/ui'
 import { SYMPTOMS, type CheckIn, type Symptom, type WaterReport } from '../../lib/db'
 import { useResident } from '../../stores/residentStore'
 import { tickLabel } from '../../sim/world'
 
-const MOODS: { v: CheckIn['mood']; label: string; glyph: string }[] = [
-  { v: 1, label: 'Very low', glyph: '◔' },
-  { v: 2, label: 'Low', glyph: '◑' },
-  { v: 3, label: 'Okay', glyph: '◕' },
-  { v: 4, label: 'Good', glyph: '●' },
-  { v: 5, label: 'Great', glyph: '✺' },
+const MOODS: { v: CheckIn['mood']; label: string }[] = [
+  { v: 1, label: 'Very low' },
+  { v: 2, label: 'Low' },
+  { v: 3, label: 'Okay' },
+  { v: 4, label: 'Good' },
+  { v: 5, label: 'Great' },
 ]
 
 const WATER: { v: WaterReport; label: string }[] = [
@@ -104,9 +105,7 @@ export function CheckInCard({ tick, onCheckedIn }: { tick: number; onCheckedIn?:
               className={`${chip(mood === m.v)} flex flex-col items-center py-1`}
               onClick={() => setMood(m.v)}
             >
-              <span aria-hidden className="text-lg">
-                {m.glyph}
-              </span>
+              <MoodIcon value={m.v} />
               <span className="text-[11px]">{m.label}</span>
             </button>
           ))}

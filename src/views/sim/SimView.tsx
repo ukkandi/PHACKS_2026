@@ -63,7 +63,7 @@ export function SimView() {
     >
       <div
         role="note"
-        className="mb-4 rounded-xl border-2 border-dashed border-sim/60 bg-sim/5 p-4 text-sm text-white"
+        className="mb-4 rounded-xl border-2 border-dashed border-sim/60 bg-sim/5 p-4 text-sm text-cream"
       >
         <h1 className="font-mono text-base font-bold text-sim uppercase">
           World Simulator — demo only, not part of Lantern
@@ -175,7 +175,7 @@ export function SimView() {
             <label className="flex min-h-11 items-center gap-2 text-sm">
               <input
                 type="checkbox"
-                className="size-5 accent-amber-400"
+                className="size-5 accent-lamp"
                 checked={relaysOn}
                 onChange={(e) => setRelaysOn(e.target.checked)}
               />

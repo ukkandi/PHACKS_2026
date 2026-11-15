@@ -77,9 +77,9 @@ export function LedgerBody({ nodeId }: { nodeId: string }) {
 
 function Stat({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
   return (
-    <div className="rounded-xl border border-hollow-700 bg-hollow-900 p-3">
-      <div className="text-xs text-hollow-500 uppercase">{label}</div>
-      <div className={`text-2xl font-bold ${danger && value !== '0' ? 'text-danger' : ''}`}>{value}</div>
+    <div className="rounded-2xl border border-hollow-700 bg-hollow-900 p-3">
+      <div className="font-mono text-[11px] tracking-wider text-hollow-500 uppercase">{label}</div>
+      <div className={`font-display text-2xl font-bold ${danger && value !== '0' ? 'text-danger' : 'text-data'}`}>{value}</div>
     </div>
   )
 }

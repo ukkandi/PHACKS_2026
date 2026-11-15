@@ -40,16 +40,16 @@ export function OutbreakPanel({ view, bulletin }: { view: LedgerView; bulletin: 
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-3">
                   <div>
-                    <div className="text-xs text-hollow-500 uppercase">Lantern (community)</div>
-                    <div className="text-3xl font-bold text-danger">{pct(l.outbreak.rate)}</div>
+                    <div className="font-mono text-[11px] tracking-wider text-data uppercase">Lantern · community</div>
+                    <div className="font-display text-4xl font-bold text-data">{pct(l.outbreak.rate)}</div>
                     <div className="text-xs text-hollow-300">
                       with symptoms · based on <strong>{l.reports}</strong> reports
                       {pop > 0 && <> · ≈{people(l.outbreak.rate * pop)} people</>}
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-hollow-500 uppercase">Directorate official</div>
-                    <div className="text-3xl font-bold text-hollow-300">{official ? pct(official.symptomRate) : '—'}</div>
+                    <div className="font-mono text-[11px] tracking-wider text-hollow-500 uppercase">Directorate official</div>
+                    <div className="font-display text-4xl font-bold text-hollow-500">{official ? pct(official.symptomRate) : '—'}</div>
                     <div className="text-xs text-hollow-300">
                       published figure{official && pop > 0 && <> · ≈{people(official.symptomRate * pop)} people</>}
                     </div>

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { LanternMark } from './LanternMark'
 
 export function Shell({
   view,
@@ -25,9 +26,9 @@ export function Shell({
             <span className="text-sm font-normal text-hollow-300">· demo only</span>
           </Link>
         ) : (
-          <Link to="/" className="flex items-center gap-2 text-lg font-bold text-lamp">
-            <span aria-hidden>◉</span> Lantern
-            <span className="text-sm font-normal text-hollow-300">/ {view}</span>
+          <Link to="/" className="flex items-center gap-2 font-display text-xl font-bold text-cream">
+            <LanternMark size={30} /> Lantern
+            <span className="font-mono text-xs font-normal tracking-wider text-hollow-300 uppercase">/ {view}</span>
           </Link>
         )}
         {aside}
@@ -35,7 +36,7 @@ export function Shell({
       <main id="main" tabIndex={-1} className="flex-1 outline-none">
         {children}
       </main>
-      <footer className="mt-8 text-xs text-hollow-500">
+      <footer className="mt-10 border-t border-hollow-800 pt-4 font-mono text-[11px] tracking-wide text-hollow-500 uppercase">
         Fictional demo · the Hollow, 2087 · all data simulated · personal data never leaves this device
       </footer>
     </div>

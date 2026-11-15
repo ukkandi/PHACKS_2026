@@ -67,7 +67,7 @@ export function HollowMap({ view, bulletin }: { view: LedgerView; bulletin: Dire
                         L{l.level}
                       </button>
                     </th>
-                    <td className={`px-2 py-1 ${l.reports < 20 ? 'text-warn' : ''}`}>
+                    <td className={`px-2 py-1 ${l.reports < 20 ? 'text-warn' : 'text-data'}`}>
                       {l.reports} report{l.reports === 1 ? '' : 's'}
                       {l.heldBack.length > 0 && <span className="text-danger"> · {l.heldBack.length} held</span>}
                     </td>

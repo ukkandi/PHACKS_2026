@@ -46,19 +46,19 @@ export function HistoryCard() {
   return (
     <Card title="Your sleep & mood" right={<span className="text-xs text-hollow-500">only on this device</span>}>
       <p className="mb-2 text-sm text-hollow-300">
-        Avg mood <strong className="text-white">{avgMood.toFixed(1)}/5</strong> · avg sleep{' '}
-        <strong className="text-white">{avgSleep.toFixed(1)}h</strong> over {recent.length} check-in
+        Avg mood <strong className="text-cream">{avgMood.toFixed(1)}/5</strong> · avg sleep{' '}
+        <strong className="text-cream">{avgSleep.toFixed(1)}h</strong> over {recent.length} check-in
         {recent.length > 1 ? 's' : ''}
       </p>
       {series.length >= 2 && (
         <div className="mb-2 grid grid-cols-2 gap-3">
           <div>
             <div className="text-xs text-lamp">Mood (1–5)</div>
-            <Spark values={series.map((c) => c.mood)} max={5} color="#f5b942" label={`Mood over your last ${series.length} check-ins`} />
+            <Spark values={series.map((c) => c.mood)} max={5} color="#F2A33A" label={`Mood over your last ${series.length} check-ins`} />
           </div>
           <div>
-            <div className="text-xs text-sky-300">Sleep (h)</div>
-            <Spark values={series.map((c) => c.sleepHours)} max={12} color="#7dd3fc" label={`Sleep over your last ${series.length} check-ins`} />
+            <div className="text-xs text-data">Sleep (h)</div>
+            <Spark values={series.map((c) => c.sleepHours)} max={12} color="#5FA8D3" label={`Sleep over your last ${series.length} check-ins`} />
           </div>
         </div>
       )}

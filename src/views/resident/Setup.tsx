@@ -11,7 +11,7 @@ export const PRESETS = [
 ]
 export const DEMO_FAMILY = 'ORIN-7'
 
-const input = 'min-h-11 w-full rounded-lg border border-hollow-700 bg-hollow-800 px-3 text-white'
+const input = 'min-h-11 w-full rounded-lg border border-hollow-700 bg-hollow-800 px-3 text-cream'
 
 export function Setup() {
   const saveProfile = useResident((s) => s.saveProfile)

@@ -1,19 +1,44 @@
 @import "tailwindcss";
 
+/* Self-hosted fonts: an offline-first app must render without the network. */
+@import "@fontsource/inter/latin-400.css";
+@import "@fontsource/inter/latin-500.css";
+@import "@fontsource/inter/latin-600.css";
+@import "@fontsource/inter/latin-700.css";
+@import "@fontsource/space-grotesk/latin-500.css";
+@import "@fontsource/space-grotesk/latin-700.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
+
 @theme {
-  --color-hollow-950: #0b0d10;
-  --color-hollow-900: #12161b;
-  --color-hollow-800: #1a2027;
-  --color-hollow-700: #263039;
-  --color-hollow-500: #8394a3; /* ≥4.5:1 on hollow-900 for small text */
-  --color-hollow-300: #a9b6c2;
-  --color-lamp: #f5b942;
-  --color-ok: #4ade80;
-  --color-warn: #fbbf24;
-  --color-danger: #f87171;
-  /* World Simulator / demo tooling: deliberately not a Lantern brand colour. */
-  --color-sim: #7dd3fc;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* Lantern brand (matches the pitch deck) */
+  --color-hollow-950: #14110f; /* warm near-black: page */
+  --color-hollow-900: #1d1915; /* cards */
+  --color-hollow-800: #2a241f; /* inputs, hover */
+  --color-hollow-700: #3b332c; /* borders */
+  --color-hollow-500: #a89e8f; /* muted text, ≥5:1 on cards */
+  --color-hollow-300: #d3c8b6; /* secondary text */
+  --color-cream: #f2ebdd; /* body text */
+  --color-lamp: #f2a33a; /* lantern amber */
+  --color-data: #5fa8d3; /* numbers & charts */
+  --color-ok: #8cc084;
+  --color-warn: #f5c451;
+  --color-danger: #e86a5c;
+  /* World Simulator / demo tooling: deliberately NOT a Lantern brand colour. */
+  --color-sim: #b9a6e0;
+
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
 }
 
 html,
@@ -25,12 +50,11 @@ body,
 body {
   margin: 0;
   background: var(--color-hollow-950);
-  color: #e6edf3;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--color-cream);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
-/* Strong, visible keyboard focus everywhere (accessibility principle #5). */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -55,7 +79,30 @@ body {
   font-weight: 600;
 }
 
+/* Strong, visible keyboard focus everywhere (accessibility principle #5). */
 :focus-visible {
   outline: 3px solid var(--color-lamp);
   outline-offset: 2px;
+}
+
+/* Soft lantern glow behind the logo on the landing page. */
+.lantern-glow {
+  background: radial-gradient(closest-side, rgb(242 163 58 / 0.35), rgb(242 163 58 / 0.08) 60%, transparent 75%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .lantern-flicker {
+    animation: flicker 4s ease-in-out infinite;
+  }
+  @keyframes flicker {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    45% {
+      opacity: 0.86;
+    }
+    55% {
+      opacity: 0.95;
+    }
+  }
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Shell } from '../../components/Shell'
+import { MoodIcon } from '../../components/MoodIcon'
 import { Button } from '../../components/ui'
 import { sendCare } from '../../lib/care'
 import { SYMPTOMS, type CheckIn, type Symptom, type WaterReport } from '../../lib/db'
@@ -31,7 +32,7 @@ interface Draft {
 const EMPTY: Draft = { unit: '', okay: true, mood: 3, sleepHours: 7, symptoms: [], water: 'ok' }
 
 const big = 'min-h-20 rounded-2xl border-2 px-4 text-xl font-semibold transition focus-visible:outline-4'
-const off = 'border-hollow-700 bg-hollow-800 text-white hover:border-lamp'
+const off = 'border-hollow-700 bg-hollow-800 text-cream hover:border-lamp'
 const on = 'border-lamp bg-lamp/20 text-lamp'
 
 export function TerminalView() {
@@ -219,9 +220,7 @@ function Terminal({ level }: { level: number }) {
             <div className="grid grid-cols-5 gap-2">
               {(['Very low', 'Low', 'Okay', 'Good', 'Great'] as const).map((label, i) => (
                 <button key={label} type="button" className={`${big} ${off} flex flex-col items-center justify-center`} onClick={() => update({ mood: (i + 1) as CheckIn['mood'] })}>
-                  <span className="text-3xl" aria-hidden>
-                    {['◔', '◑', '◕', '●', '✺'][i]}
-                  </span>
+                  <MoodIcon value={i + 1} size={34} />
                   <span className="text-sm">{label}</span>
                 </button>
               ))}
