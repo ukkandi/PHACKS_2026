@@ -80,8 +80,18 @@ export function describeRoute(path: Hop[]): string {
 export interface MeshNodeOptions {
   getInfo: () => NodeInfo
   onDeliver?: (packet: Packet) => void
+  /** Called for every in-range frame (even duplicates): lets a device see who is nearby. */
+  onFrame?: (sender: NodeInfo, link: Link) => void
   /** Relay packets for others (every Lantern device does by default). */
   relay?: boolean
+}
+
+/**
+ * Alerts get a deterministic id, so when several devices on a level raise the same alert in the
+ * same hour the mesh treats them as one packet instead of flooding duplicates.
+ */
+export function alertPacketId(a: AlertBody): string {
+  return `alert-L${a.level}-${a.band}-t${a.tick}`
 }
 
 function newId(): string {
@@ -107,11 +117,11 @@ export class MeshNode {
   }
 
   /** Originate a packet. Returns it (with the origin hop) so the caller can show "sent". */
-  send(body: MeshBody, ttl = DEFAULT_TTL): Packet {
+  send(body: MeshBody, opts: { ttl?: number; id?: string } = {}): Packet {
     const me = this.info
     const packet: Packet = {
-      id: newId(),
-      ttl,
+      id: opts.id ?? (body.kind === 'alert' ? alertPacketId(body) : newId()),
+      ttl: opts.ttl ?? DEFAULT_TTL,
       createdAt: Date.now(),
       path: [{ nodeId: me.nodeId, level: me.level, link: 'origin' }],
       body,
@@ -131,6 +141,7 @@ export class MeshNode {
     if (frame.sender.nodeId === me.nodeId) return
     const link = linkBetween(frame.sender, me)
     if (!link) return // out of range: this frame never physically reached us
+    this.opts.onFrame?.(frame.sender, link)
     const { packet } = frame
     if (this.seen.has(packet.id)) return
     this.markSeen(packet.id)

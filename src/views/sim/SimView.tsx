@@ -6,6 +6,8 @@ import { SPEEDS, useSim } from '../../stores/simStore'
 import { LEVEL_COUNT } from '../../sim/types'
 import { isNetworkUp, tickLabel } from '../../sim/world'
 import { LevelTable } from './LevelTable'
+import { MeshMonitor } from './MeshMonitor'
+import { startRelays } from '../../lib/relays'
 
 const DEEP_LEVELS = [34, 35, 36, 37, 38, 39, 40]
 
@@ -22,6 +24,21 @@ export function SimView() {
       setSpeed(0)
     }
   }, [setSpeed])
+
+  const [relaysOn, setRelaysOn] = useState(true)
+
+  // Simulated neighbour devices (one per level) that relay mesh traffic and emit level alerts.
+  useEffect(() => {
+    if (!relaysOn) return
+    const fleet = startRelays(() => useSim.getState().world)
+    const unsub = useSim.subscribe((s, prev) => {
+      if (s.world !== prev.world) fleet.onWorld(s.world)
+    })
+    return () => {
+      unsub()
+      fleet.stop()
+    }
+  }, [relaysOn])
 
   const l = world.levels[level - 1]
   const net = isNetworkUp(world, level)
@@ -114,6 +131,23 @@ export function SimView() {
               </Button>
             </div>
           </Card>
+
+          <Card title="Mesh">
+            <label className="flex min-h-11 items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="size-5 accent-amber-400"
+                checked={relaysOn}
+                onChange={(e) => setRelaysOn(e.target.checked)}
+              />
+              Neighbour devices relay traffic (1 per level) <SimTag />
+            </label>
+            <p className="mt-1 text-xs text-hollow-500">
+              Devices link over the Directorate net when both ends have it, otherwise by radio to devices within 2
+              levels. Off = only the open resident tabs can relay.
+            </p>
+          </Card>
+          <MeshMonitor />
 
           <Card title="Event log">
             <ol className="max-h-72 space-y-1 overflow-auto font-mono text-xs" aria-live="polite">

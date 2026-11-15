@@ -1,5 +1,6 @@
 // On-device storage. Personal data lives ONLY here (principle #2: privacy by design).
 import Dexie, { type EntityTable } from 'dexie'
+import type { Hop } from './mesh'
 
 export interface Profile {
   key: 'me'
@@ -31,9 +32,36 @@ export interface CheckIn {
   level: number
 }
 
+/** Last status heard from a family member over the mesh (decrypted, on-device only). */
+export interface FamilyMember {
+  memberId: string
+  name: string
+  level: number
+  unit: string
+  lastCheckIn: { tick: number; okay: boolean } | null
+  /** Sender's sim tick when the status was sent. */
+  sentTick: number
+  receivedAt: number
+  route: Hop[]
+}
+
+export interface FamilyMessage {
+  id: string
+  memberId: string
+  name: string
+  level: number
+  text: string
+  ts: number
+  tick: number
+  mine: boolean
+  route: Hop[]
+}
+
 export type LanternDB = Dexie & {
   profile: EntityTable<Profile, 'key'>
   checkins: EntityTable<CheckIn, 'id'>
+  family: EntityTable<FamilyMember, 'memberId'>
+  messages: EntityTable<FamilyMessage, 'id'>
 }
 
 const cache = new Map<string, LanternDB>()
@@ -45,6 +73,10 @@ export function openDeviceDb(deviceId: string): LanternDB {
   db.version(1).stores({
     profile: 'key',
     checkins: '++id, tick, ts',
+  })
+  db.version(2).stores({
+    family: 'memberId',
+    messages: 'id, ts',
   })
   cache.set(deviceId, db)
   return db

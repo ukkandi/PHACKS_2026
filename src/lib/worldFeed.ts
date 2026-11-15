@@ -85,6 +85,11 @@ function subscribe(cb: () => void) {
   }
 }
 
+/** Non-React subscription to world updates. */
+export function subscribeWorld(cb: (w: World | null) => void): () => void {
+  return subscribe(() => cb(current))
+}
+
 /** React hook: latest world snapshot (or null if no simulator has ever run). */
 export function useWorld(): World | null {
   return useSyncExternalStore(subscribe, () => current)
