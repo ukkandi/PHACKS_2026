@@ -27,7 +27,7 @@ export function LedgerBody({ nodeId, readOnly = false }: { nodeId: string; readO
   const { view, bulletin, plan, tick } = useLedgerView(priorities)
 
   useEffect(() => {
-    start(nodeId)
+    start({ nodeId })
     return stop
   }, [start, stop, nodeId])
 

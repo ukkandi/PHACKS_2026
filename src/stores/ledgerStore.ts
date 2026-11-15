@@ -18,7 +18,12 @@ interface Persisted {
 
 interface LedgerState extends Persisted {
   running: boolean
-  start: (nodeId: string) => void
+  /**
+   * Join the mesh as a ledger node. `level` = where this device physically is (default: the
+   * public ledger node's level). `onSealed` lets a warden device read its block's care notes
+   * through the same node.
+   */
+  start: (opts: { nodeId: string; level?: number; onSealed?: (p: Packet) => void }) => void
   stop: () => void
   /** Raw anonymous data for download — so anyone can check the numbers. */
   exportJson: () => string
@@ -37,11 +42,16 @@ function load(): Persisted {
 let node: MeshNode | null = null
 let saveTimer: ReturnType<typeof setInterval> | null = null
 
+/** The running ledger node (used by the warden view to send verifications). */
+export function getLedgerNode(): MeshNode | null {
+  return node
+}
+
 export const useLedger = create<LedgerState>((set, get) => ({
   ...load(),
   running: false,
 
-  start: (nodeId) => {
+  start: ({ nodeId, level = LEDGER_LEVEL, onSealed }) => {
     if (node) return
     const onDeliver = (p: Packet) => {
       const b = p.body
@@ -58,12 +68,12 @@ export const useLedger = create<LedgerState>((set, get) => ({
       } else if (b.kind === 'verify') {
         set({ verifies: [...get().verifies, { ...b, id: p.id, receivedAt: now }].slice(-200) })
       }
-      // 'sealed' packets are relayed but unreadable here — by design.
+      else if (b.kind === 'sealed') onSealed?.(p) // unreadable unless the caller holds the key
     }
     node = new MeshNode({
       getInfo: () => {
         const w = getWorld()
-        return { nodeId, level: LEDGER_LEVEL, netUp: w ? isNetworkUp(w, LEDGER_LEVEL) : true }
+        return { nodeId, level, netUp: w ? isNetworkUp(w, level) : true }
       },
       onDeliver,
     })
