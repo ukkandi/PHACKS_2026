@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { Home } from './views/Home'
 import { Placeholder } from './views/Placeholder'
+import { SimView } from './views/sim/SimView'
 
 export default function App() {
   return (
@@ -8,7 +9,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/resident" element={<Placeholder view="resident" phase={1} purpose="Daily check-in." />} />
-        <Route path="/sim" element={<Placeholder view="sim" phase={1} purpose="Scenario control panel." />} />
+        <Route path="/sim" element={<SimView />} />
         <Route
           path="/terminal"
           element={<Placeholder view="terminal" phase={4} purpose="Shared level terminal check-in." />}

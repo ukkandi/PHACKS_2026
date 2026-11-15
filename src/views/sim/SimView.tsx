@@ -1,0 +1,135 @@
+import { useEffect, useState } from 'react'
+import { Shell } from '../../components/Shell'
+import { Button, Card, SimTag } from '../../components/ui'
+import { registerPublisher, publishWorld } from '../../lib/worldFeed'
+import { SPEEDS, useSim } from '../../stores/simStore'
+import { LEVEL_COUNT } from '../../sim/types'
+import { isNetworkUp, tickLabel } from '../../sim/world'
+import { LevelTable } from './LevelTable'
+
+const DEEP_LEVELS = [34, 35, 36, 37, 38, 39, 40]
+
+export function SimView() {
+  const { world, speedIndex, setSpeed, step, act, reset } = useSim()
+  const [level, setLevel] = useState(38)
+
+  // This tab is the world's source of truth: answer new tabs and publish once on open.
+  useEffect(() => {
+    publishWorld(useSim.getState().world)
+    const off = registerPublisher(() => useSim.getState().world)
+    return () => {
+      off()
+      setSpeed(0)
+    }
+  }, [setSpeed])
+
+  const l = world.levels[level - 1]
+  const net = isNetworkUp(world, level)
+
+  return (
+    <Shell
+      view="simulator"
+      aside={
+        <div className="flex items-center gap-2">
+          <SimTag>operator console</SimTag>
+          <span className="font-mono text-lamp">{tickLabel(world.tick)}</span>
+        </div>
+      }
+    >
+      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+        <div className="space-y-4">
+          <Card
+            title="Clock"
+            right={<span className="text-xs text-hollow-500">1 tick = 1 simulated hour</span>}
+          >
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Simulation speed">
+              {SPEEDS.map((s, i) => (
+                <Button key={s.label} tone={i === speedIndex ? 'primary' : 'default'} onClick={() => setSpeed(i)}>
+                  {s.label}
+                </Button>
+              ))}
+              <Button onClick={step} disabled={speedIndex !== 0}>
+                Step +1h
+              </Button>
+              <Button
+                tone="ghost"
+                onClick={() => {
+                  if (confirm('Reset the world to hour 0?')) reset()
+                }}
+              >
+                Reset world
+              </Button>
+            </div>
+          </Card>
+          <LevelTable world={world} selected={level} onSelect={setLevel} />
+        </div>
+
+        <div className="space-y-4">
+          <Card title="Scenario">
+            <label className="mb-3 flex items-center gap-2 text-sm">
+              Target level
+              <select
+                value={level}
+                onChange={(e) => setLevel(Number(e.target.value))}
+                className="min-h-11 rounded-lg border border-hollow-700 bg-hollow-800 px-2"
+              >
+                {Array.from({ length: LEVEL_COUNT }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    Level {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="mb-3 text-xs text-hollow-300">
+              L{level}: {l.blackout ? 'blackout' : l.surging ? 'demand climbing' : 'normal'} · network{' '}
+              {net ? 'up' : 'down'}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button onClick={() => act({ type: 'surge', level })} disabled={l.surging || l.blackout}>
+                Power surge
+              </Button>
+              <Button tone="danger" onClick={() => act({ type: 'blackout', level })} disabled={l.blackout}>
+                Force blackout
+              </Button>
+              <Button onClick={() => act({ type: 'restore', level })}>Restore power</Button>
+              <Button onClick={() => act({ type: l.networkUp ? 'networkDown' : 'networkUp', level })}>
+                Net {l.networkUp ? 'down' : 'up'} (L{level})
+              </Button>
+              <Button onClick={() => act({ type: 'contaminateWater', level })}>Contaminate water</Button>
+              <Button onClick={() => act({ type: 'cleanWater', level })}>Flush water</Button>
+            </div>
+            <hr className="my-3 border-hollow-800" />
+            <div className="grid grid-cols-1 gap-2">
+              <Button
+                tone={world.globalNetworkDown ? 'danger' : 'default'}
+                onClick={() => act({ type: 'globalNetwork', down: !world.globalNetworkDown })}
+              >
+                {world.globalNetworkDown ? 'Restore Directorate network (all)' : 'Directorate network: shut ALL down'}
+              </Button>
+              <Button onClick={() => act({ type: 'symptomSpike', levels: DEEP_LEVELS })}>
+                Symptom spike, levels 34–40
+              </Button>
+              <Button onClick={() => act({ type: 'addUsers', count: 500 })}>
+                +500 residents join ({world.activeUsers.toLocaleString()})
+              </Button>
+            </div>
+          </Card>
+
+          <Card title="Event log">
+            <ol className="max-h-72 space-y-1 overflow-auto font-mono text-xs" aria-live="polite">
+              {world.log
+                .slice()
+                .reverse()
+                .slice(0, 60)
+                .map((e, i) => (
+                  <li key={`${e.tick}-${i}`} className="text-hollow-300">
+                    <span className="text-hollow-500">{tickLabel(e.tick)}</span> {e.text}
+                  </li>
+                ))}
+            </ol>
+          </Card>
+        </div>
+      </div>
+    </Shell>
+  )
+}
