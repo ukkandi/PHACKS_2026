@@ -3,13 +3,13 @@ import { Button, Card } from '../../components/ui'
 import { useResident } from '../../stores/residentStore'
 import { LEVEL_COUNT } from '../../sim/types'
 
-// Demo presets: one family spread across three levels.
-const PRESETS = [
-  { name: 'Mara', level: 38, unit: '38-114' },
-  { name: 'Teo', level: 36, unit: '36-207' },
-  { name: 'Ilan', level: 12, unit: '12-031' },
+// Demo presets: one family spread across three levels. `?as=mara` on /resident picks one directly.
+export const PRESETS = [
+  { key: 'mara', name: 'Mara', level: 38, unit: '38-114' },
+  { key: 'teo', name: 'Teo', level: 36, unit: '36-207' },
+  { key: 'ilan', name: 'Ilan', level: 12, unit: '12-031' },
 ]
-const DEMO_FAMILY = 'ORIN-7'
+export const DEMO_FAMILY = 'ORIN-7'
 
 const input = 'min-h-11 w-full rounded-lg border border-hollow-700 bg-hollow-800 px-3 text-white'
 
@@ -37,7 +37,10 @@ export function Setup() {
           <div className="mb-2 text-xs text-hollow-500 uppercase">Demo family “{DEMO_FAMILY}”</div>
           <div className="flex flex-wrap gap-2">
             {PRESETS.map((p) => (
-              <Button key={p.name} onClick={() => void saveProfile({ ...p, familyCode: DEMO_FAMILY })}>
+              <Button
+                key={p.name}
+                onClick={() => void saveProfile({ name: p.name, level: p.level, unit: p.unit, familyCode: DEMO_FAMILY })}
+              >
                 {p.name} · L{p.level}
               </Button>
             ))}

@@ -146,7 +146,15 @@ export const useLedger = create<LedgerState>((set, get) => ({
     set({ ...saved, summaries: saved.summaries.filter((s) => s.tick <= tick && tick - s.tick < BASELINE_FROM), running: true, caughtUp: 0 })
     const requestId = `sync-${nodeId}-${Date.now().toString(36)}`
     answered.add(requestId)
-    setTimeout(() => node?.send({ kind: 'sync-req', requestId, want: ['summaries', 'alerts', 'verifies', 'votes'] }), 200)
+    const ask = (id: string) => {
+      answered.add(id)
+      node?.send({ kind: 'sync-req', requestId: id, want: ['summaries', 'alerts', 'verifies', 'votes'] })
+    }
+    setTimeout(() => ask(requestId), 200)
+    // If nobody answered (e.g. the simulator tab was still loading), ask once more.
+    setTimeout(() => {
+      if (node && get().summaries.length === 0) ask(`${requestId}-retry`)
+    }, 3000)
   },
 
   stop: () => {

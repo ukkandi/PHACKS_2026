@@ -12,7 +12,7 @@ import { LocalConditions } from './LocalConditions'
 import { MeshAlertsCard } from './MeshAlertsCard'
 import { MeshStatus } from './MeshStatus'
 import { MessagesCard } from './MessagesCard'
-import { Setup } from './Setup'
+import { DEMO_FAMILY, PRESETS, Setup } from './Setup'
 import { WarningBanner } from './WarningBanner'
 
 export function ResidentView() {
@@ -24,6 +24,13 @@ export function ResidentView() {
   useEffect(() => {
     void load()
   }, [load])
+
+  // Demo launcher links (`?as=mara`) set the device up as that family member.
+  useEffect(() => {
+    if (!loaded || profile) return
+    const p = PRESETS.find((x) => x.key === new URLSearchParams(location.search).get('as'))
+    if (p) void useResident.getState().saveProfile({ name: p.name, level: p.level, unit: p.unit, familyCode: DEMO_FAMILY })
+  }, [loaded, profile])
 
   // Join the mesh once we know who we are.
   useEffect(() => {

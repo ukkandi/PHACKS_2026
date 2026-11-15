@@ -11,6 +11,8 @@
   --color-ok: #4ade80;
   --color-warn: #fbbf24;
   --color-danger: #f87171;
+  /* World Simulator / demo tooling: deliberately not a Lantern brand colour. */
+  --color-sim: #7dd3fc;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 

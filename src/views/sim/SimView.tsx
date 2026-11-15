@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { resetDemo } from '../../lib/demoReset'
 import { Shell } from '../../components/Shell'
 import { Button, Card, SimTag } from '../../components/ui'
 import { registerPublisher, publishWorld } from '../../lib/worldFeed'
@@ -13,7 +15,7 @@ import { injectFakeReports } from '../../lib/spoof'
 const DEEP_LEVELS = [34, 35, 36, 37, 38, 39, 40]
 
 export function SimView() {
-  const { world, speedIndex, setSpeed, step, act, reset } = useSim()
+  const { world, speedIndex, setSpeed, step, act } = useSim()
   const [level, setLevel] = useState(38)
 
   // This tab is the world's source of truth: answer new tabs and publish once on open.
@@ -61,9 +63,9 @@ export function SimView() {
     >
       <div
         role="note"
-        className="mb-4 rounded-xl border-2 border-dashed border-sky-400/60 bg-sky-400/5 p-4 text-sm text-sky-100"
+        className="mb-4 rounded-xl border-2 border-dashed border-sim/60 bg-sim/5 p-4 text-sm text-white"
       >
-        <h1 className="font-mono text-base font-bold text-sky-300 uppercase">
+        <h1 className="font-mono text-base font-bold text-sim uppercase">
           World Simulator — demo only, not part of Lantern
         </h1>
         <p className="mt-1">
@@ -89,13 +91,16 @@ export function SimView() {
                 Step +1h
               </Button>
               <Button
-                tone="ghost"
+                tone="danger"
                 onClick={() => {
-                  if (confirm('Reset the world to hour 0?')) reset()
+                  if (confirm('Wipe ALL demo data in every tab and start the demo from the beginning?')) void resetDemo()
                 }}
               >
-                Reset world
+                Reset &amp; set up demo
               </Button>
+              <Link to="/demo" className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm underline">
+                Demo launcher →
+              </Link>
             </div>
           </Card>
           <LevelTable world={world} selected={level} onSelect={setLevel} />

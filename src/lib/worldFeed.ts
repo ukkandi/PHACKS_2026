@@ -4,6 +4,7 @@
 // actual product's peer-to-peer messaging layer.
 import { useSyncExternalStore } from 'react'
 import { WORLD_VERSION, type World } from '../sim/types'
+import { isResetting } from './demoReset'
 
 const CHANNEL = 'lantern-world'
 const STORAGE_KEY = 'lantern-world-v1'
@@ -50,6 +51,7 @@ function ensureChannel(): BroadcastChannel {
 
 /** Called by the /sim tab whenever the world changes. */
 export function publishWorld(world: World) {
+  if (isResetting()) return
   current = world
   lastUpdate = Date.now()
   try {

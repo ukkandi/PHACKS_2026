@@ -20,7 +20,7 @@ export function Shell({
       </a>
       <header className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-hollow-800 pb-3">
         {simulator ? (
-          <Link to="/" className="flex items-center gap-2 font-mono text-lg font-bold text-sky-300">
+          <Link to="/" className="flex items-center gap-2 font-mono text-lg font-bold text-sim">
             <span aria-hidden>⚙</span> World Simulator
             <span className="text-sm font-normal text-hollow-300">· demo only</span>
           </Link>
