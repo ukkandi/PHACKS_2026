@@ -1,6 +1,8 @@
 // SIMULATED: everything in the world model is a fictional simulation for the demo.
 
 export const LEVEL_COUNT = 40
+/** Bump when the World shape changes so stale snapshots in localStorage are discarded. */
+export const WORLD_VERSION = 2
 /** How many ticks of history each level keeps (1 tick = 1 simulated hour). */
 export const HISTORY_LEN = 48
 
@@ -29,6 +31,12 @@ export interface LevelState {
   symptomRate: number
   /** Normal symptom rate for this level. */
   symptomBaseline: number
+  /** Extra symptom rate from an active outbreak; fades slowly. */
+  outbreakLoad: number
+  /** Tick the current blackout began, or null. */
+  blackoutSince: number | null
+  /** Air pumps on an emergency line (the Directorate rerouted reserve power to them). */
+  airBackup: boolean
   /** Utilisation (load / capacity) history, oldest first. Blackout ticks are recorded as 0. */
   loadHistory: number[]
   tempHistory: number[]
@@ -41,7 +49,10 @@ export interface SimEvent {
 }
 
 export interface World {
+  version: number
   seed: number
+  /** Spare geothermal capacity the Directorate can route anywhere, MW. */
+  reserveMW: number
   rngState: number
   tick: number
   /** All-levels Directorate network outage (e.g. the Directorate cuts the net). */
@@ -64,3 +75,4 @@ export type SimAction =
   | { type: 'cleanWater'; level: number }
   | { type: 'symptomSpike'; levels: number[] }
   | { type: 'addUsers'; count: number }
+  | { type: 'airBackup'; level: number; on: boolean }

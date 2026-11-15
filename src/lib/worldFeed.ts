@@ -3,7 +3,7 @@
 // tab. It is deliberately separate from the Lantern mesh (src/lib/mesh.ts), which is the
 // actual product's peer-to-peer messaging layer.
 import { useSyncExternalStore } from 'react'
-import type { World } from '../sim/types'
+import { WORLD_VERSION, type World } from '../sim/types'
 
 const CHANNEL = 'lantern-world'
 const STORAGE_KEY = 'lantern-world-v1'
@@ -13,7 +13,8 @@ type FeedMessage = { type: 'snapshot'; world: World } | { type: 'hello' }
 function readStored(): World | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as World) : null
+    const w = raw ? (JSON.parse(raw) as World) : null
+    return w && w.version === WORLD_VERSION ? w : null
   } catch {
     return null
   }
@@ -35,7 +36,7 @@ function ensureChannel(): BroadcastChannel {
   channel = new BroadcastChannel(CHANNEL)
   channel.onmessage = (e: MessageEvent<FeedMessage>) => {
     const msg = e.data
-    if (msg.type === 'snapshot') {
+    if (msg.type === 'snapshot' && msg.world.version === WORLD_VERSION) {
       current = msg.world
       lastUpdate = Date.now()
       emit()

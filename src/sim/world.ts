@@ -1,7 +1,7 @@
 // SIMULATED: deterministic, seeded model of the Hollow. Not real physics — just enough
 // structure (depth → heat, cooling → load, blackout → heat/air) for the demo to be coherent.
 import { Rng } from './rng'
-import { HISTORY_LEN, LEVEL_COUNT, type LevelState, type SimAction, type World } from './types'
+import { HISTORY_LEN, LEVEL_COUNT, WORLD_VERSION, type LevelState, type SimAction, type World } from './types'
 
 export const DEFAULT_SEED = 2087
 
@@ -57,6 +57,9 @@ export function createWorld(seed = DEFAULT_SEED): World {
       networkUp: true,
       symptomRate: symptomBaseline,
       symptomBaseline,
+      outbreakLoad: 0,
+      blackoutSince: null,
+      airBackup: false,
       // Two days of meter history, so devices can compare "now" with the same hour yesterday.
       loadHistory: Array.from({ length: HISTORY_LEN }, (_, i) =>
         round(((baseLoad + coolingLoad(temperature)) * dailyCycle(i - HISTORY_LEN)) / powerCapacity + rng.noise(0.012), 4),
@@ -65,11 +68,13 @@ export function createWorld(seed = DEFAULT_SEED): World {
     })
   }
   return {
+    version: WORLD_VERSION,
     seed,
+    reserveMW: 14,
     rngState: rng.state,
     tick: 0,
     globalNetworkDown: false,
-    activeUsers: 1200,
+    activeUsers: 6000,
     levels,
     log: [{ tick: 0, text: 'Simulation started. All levels nominal.' }],
   }
@@ -109,6 +114,7 @@ export function tickWorld(world: World): World {
       )
       if (next.powerLoad >= l.powerCapacity) {
         next.blackout = true
+        next.blackoutSince = tick
         next.surging = false
         next.networkUp = false
         log.push({
@@ -120,10 +126,11 @@ export function tickWorld(world: World): World {
       }
     }
 
-    // Air: pumps stop in a blackout; slowly recovers otherwise.
+    // Air: pumps stop in a blackout (unless on backup power); slowly recovers otherwise.
     const airTarget = 95 - ((l.level - 1) / (LEVEL_COUNT - 1)) * 18
+    const pumpsOff = next.blackout && !l.airBackup
     next.airQuality = round(
-      clamp(next.blackout ? l.airQuality - 2.5 : l.airQuality + (airTarget - l.airQuality) * 0.1, 0, 100),
+      clamp(pumpsOff ? l.airQuality - 2.5 : l.airQuality + (airTarget - l.airQuality) * 0.1, 0, 100),
       1,
     )
     // Water recovers slowly toward normal unless contaminated (contamination sets it low and it lingers).
@@ -132,10 +139,9 @@ export function tickWorld(world: World): World {
     // Symptoms decay toward baseline; heat and bad water push them up.
     const heatPush = Math.max(0, next.temperature - 40) * 0.002
     const waterPush = Math.max(0, 70 - next.waterQuality) * 0.0015
-    next.symptomRate = round(
-      clamp(l.symptomRate + (l.symptomBaseline - l.symptomRate) * 0.08 + heatPush + waterPush, 0, 1),
-      4,
-    )
+    next.outbreakLoad = round(l.outbreakLoad * 0.985, 4)
+    const target = l.symptomBaseline + next.outbreakLoad
+    next.symptomRate = round(clamp(l.symptomRate + (target - l.symptomRate) * 0.15 + heatPush + waterPush, 0, 1), 4)
 
     next.loadHistory = pushHistory(l.loadHistory, next.blackout ? 0 : next.powerLoad / l.powerCapacity)
     next.tempHistory = pushHistory(l.tempHistory, next.temperature)
@@ -168,14 +174,14 @@ export function applyAction(world: World, action: SimAction): World {
       return updateLevel(
         world,
         action.level,
-        () => ({ blackout: true, surging: false, powerLoad: 0, networkUp: false }),
+        () => ({ blackout: true, blackoutSince: world.tick, surging: false, powerLoad: 0, networkUp: false }),
         `Level ${action.level}: forced blackout. Directorate network lost on level.`,
       )
     case 'restore':
       return updateLevel(
         world,
         action.level,
-        () => ({ blackout: false, surging: false, surgeLoad: 0, networkUp: true }),
+        () => ({ blackout: false, blackoutSince: null, surging: false, surgeLoad: 0, networkUp: true, airBackup: false }),
         `Level ${action.level}: power and network restored.`,
       )
     case 'networkDown':
@@ -208,10 +214,24 @@ export function applyAction(world: World, action: SimAction): World {
     case 'symptomSpike': {
       let w = world
       for (const level of action.levels) {
-        w = updateLevel(w, level, (l) => ({ symptomRate: Math.min(1, l.symptomRate + 0.12) }), `Level ${level}: fever cases spike.`)
+        w = updateLevel(
+          w,
+          level,
+          (l) => ({ outbreakLoad: Math.min(0.5, l.outbreakLoad + 0.12), symptomRate: Math.min(1, l.symptomRate + 0.06) }),
+          `Level ${level}: fever and cough spreading.`,
+        )
       }
       return w
     }
+    case 'airBackup':
+      return updateLevel(
+        world,
+        action.level,
+        () => ({ airBackup: action.on }),
+        action.on
+          ? `Directorate reroutes reserve power to Level ${action.level} air pumps.`
+          : `Level ${action.level} air pumps back on normal feeder.`,
+      )
     case 'addUsers':
       return {
         ...world,
