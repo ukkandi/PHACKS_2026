@@ -12,6 +12,7 @@
 // OFF the net may be within radio range of me (I know because offline devices send tiny beacons).
 import type { ReportCounts } from './reports'
 import type { Ballot } from './votes'
+import type { PubJwk, SealedToKey } from './wardenCrypto'
 
 export const MESH_CHANNEL = 'lantern-mesh'
 export const RADIO_RANGE = 2
@@ -73,6 +74,8 @@ export interface SummaryBody {
   counts: ReportCounts
   /** Level-meter readings, attached by devices that have them (stand-in phones). */
   conditions?: LevelConditions
+  /** Required for source 'warden': the warden's signature over the counts (see wardenCrypto.msg.summary). */
+  wardenSig?: { signPub: PubJwk; sig: string }
 }
 
 /** Public level-meter readings + census population. */
@@ -91,10 +94,40 @@ export interface VerifyBody {
   level: number
   claim: 'outbreak' | 'water' | 'reports'
   confirmed: boolean
-  /** Pseudonymous warden badge, e.g. "W-38-2". SIMULATED: production would sign with a warden key. */
+  /** Display name the warden claims, e.g. "W-38-WAR". Only the signing key is trusted, never the name. */
   badge: string
   tick: number
   note?: string
+  /** The warden's public signing key and signature (see wardenCrypto.msg.verify). */
+  signPub?: PubJwk
+  sig?: string
+}
+
+/** A warden announcing its public keys, self-signed with the signing key. */
+export interface WardenKeyBody {
+  kind: 'warden-key'
+  level: number
+  badge: string
+  signPub: PubJwk
+  encPub: PubJwk
+  sig: string
+}
+
+/** A resident device vouching for a warden key. Signed by the resident's own device key. */
+export interface VouchBody {
+  kind: 'vouch'
+  voucherLevel: number
+  wardenFp: string
+  voucherPub: PubJwk
+  sig: string
+}
+
+/** A care note encrypted to ONE warden's public key (one packet per vouched warden). */
+export interface CareSealedBody extends SealedToKey {
+  kind: 'care-sealed'
+  level: number
+  /** Fingerprint of the recipient warden's signing key. */
+  to: string
 }
 
 /**
@@ -108,7 +141,7 @@ export interface SyncRequestBody {
   want: SyncWant[]
 }
 
-export type SyncWant = 'summaries' | 'alerts' | 'verifies' | 'votes'
+export type SyncWant = 'summaries' | 'alerts' | 'verifies' | 'votes' | 'wardens'
 
 /** A level's ranked ballot on the community priorities (air / water / cooling / light). */
 export interface VoteBody extends Ballot {
@@ -123,9 +156,21 @@ export interface SyncBody {
   alerts?: AlertBody[]
   verifies?: (VerifyBody & { id: string })[]
   votes?: VoteBody[]
+  wardenKeys?: WardenKeyBody[]
+  vouches?: VouchBody[]
 }
 
-export type MeshBody = SealedBody | AlertBody | SummaryBody | VerifyBody | VoteBody | SyncRequestBody | SyncBody
+export type MeshBody =
+  | SealedBody
+  | AlertBody
+  | SummaryBody
+  | VerifyBody
+  | VoteBody
+  | SyncRequestBody
+  | SyncBody
+  | WardenKeyBody
+  | VouchBody
+  | CareSealedBody
 
 export interface Packet {
   id: string

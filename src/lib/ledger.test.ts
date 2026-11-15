@@ -59,3 +59,32 @@ describe('catch-up merging', () => {
     expect(m[38].band).toBe('blackout')
   })
 })
+
+describe('warden authentication on the ledger', () => {
+  const trusted = 'aaaa1111bbbb2222'
+  const check = (fp: string | undefined, ok: boolean | undefined, level: number) =>
+    !fp || !ok ? 'unsigned' : fp === trusted && level === 38 ? null : 'unverified warden, rejected'
+
+  it('counts a check-in signed by a vouched warden, holds back unsigned and unvouched ones', () => {
+    const signed = { ...batch(38, 99, 1, 1, 'warden'), signerFp: trusted, sigValid: true }
+    const unsigned = { ...batch(38, 99, 1, 1, 'warden') }
+    const impostor = { ...batch(38, 99, 1, 1, 'warden'), signerFp: 'ffff0000ffff0000', sigValid: true }
+    const v = buildLedger([signed, unsigned, impostor], {}, [], 100, check)
+    expect(v.levels[37].bySource.warden).toBe(1)
+    expect(v.levels[37].heldBack.map((h) => h.why).sort()).toEqual(['unsigned', 'unverified warden, rejected'])
+  })
+
+  it('ignores confirmations from unvouched keys and reports them as rejected', () => {
+    const base = { kind: 'verify' as const, level: 38, claim: 'outbreak' as const, confirmed: true, badge: 'W-38-WAR', tick: 99, receivedAt: 0 }
+    const real = { ...base, id: 'r', signerFp: trusted, sigValid: true }
+    const fake = { ...base, id: 'f', signerFp: 'ffff0000ffff0000', sigValid: true }
+    const v = buildLedger([], {}, [real, fake], 100, check)
+    expect(v.levels[37].verifications.map((x) => x.id)).toEqual(['r'])
+    expect(v.rejectedVerifies).toEqual([{ verify: fake, why: 'unverified warden, rejected' }])
+  })
+
+  it('by default trusts no warden at all', () => {
+    const v = buildLedger([{ ...batch(38, 99, 1, 1, 'warden'), signerFp: trusted, sigValid: true }], {}, [], 100)
+    expect(v.levels[37].reports).toBe(0)
+  })
+})

@@ -1,15 +1,13 @@
-// The care channel: a sealed line from a block's residents/terminal to its wardens, used only when
-// someone asks for help (or a warden checks someone in). Carries a unit number so a warden can go
-// to the door — never sent to the ledger.
-// SIMULATED: production would encrypt to the wardens' public keys. The demo derives a shared
-// block key from the level number, which is NOT secret — fine for showing the flow, not for real use.
+// The care channel: a note from a resident's phone (only when they ask for help) or a level
+// terminal to the block's wardens. It carries a unit number so a warden can go to the door, and it
+// is never sent to the ledger.
+// Each note is encrypted separately to the public key of every ACTIVE warden of that level — i.e.
+// every warden key this device has seen vouched for by 3 residents of the level. Nobody else,
+// including other wardens, relays or the Directorate, can read it.
 import type { Symptom } from './db'
-import { deriveFamilyKey, sealJson } from './familyCrypto'
 import type { MeshNode } from './mesh'
-
-export function careCode(level: number): string {
-  return `CARE-BLOCK-L${level}`
-}
+import { sealTo } from './wardenCrypto'
+import { useWardenRegistry } from './wardenRegistry'
 
 export interface CarePayload {
   type: 'care'
@@ -24,9 +22,23 @@ export interface CarePayload {
   via: 'resident' | 'terminal' | 'warden'
 }
 
-/** Seal a care note to the block's wardens and send it over the mesh. */
-export async function sendCare(node: MeshNode, payload: CarePayload): Promise<void> {
-  const key = await deriveFamilyKey(careCode(payload.level))
-  const sealed = await sealJson(key, payload)
-  node.send({ kind: 'sealed', tag: key.tag, ...sealed })
+/** Seal a care note to every active warden of its level. Returns how many wardens it was sent to. */
+export async function sendCareToWardens(node: MeshNode, payload: CarePayload): Promise<number> {
+  const wardens = useWardenRegistry
+    .getState()
+    .statuses()
+    .filter((s) => s.active && s.warden.level === payload.level)
+  for (const s of wardens) {
+    const sealed = await sealTo(s.warden.encPub, payload)
+    node.send({ kind: 'care-sealed', level: payload.level, to: s.warden.fp, ...sealed })
+  }
+  return wardens.length
+}
+
+/** How many active wardens this device knows for a level (for honest UI before sending). */
+export function activeWardenCount(level: number): number {
+  return useWardenRegistry
+    .getState()
+    .statuses()
+    .filter((s) => s.active && s.warden.level === level).length
 }

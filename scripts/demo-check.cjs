@@ -20,9 +20,17 @@ const has = (text, needle) => text.toLowerCase().includes(needle.toLowerCase())
   const res = {}
   for (const name of ['Mara', 'Teo', 'Ilan']) { res[name] = await open('/resident', name); await res[name].getByRole('button', { name: new RegExp(`^${name} ·`) }).click() }
   const terminal = await open('/terminal?level=38', 'terminal')
-  const warden = await open('/warden?level=38', 'warden')
+  const warden = await open('/warden?level=38&device=warden38', 'warden')
   await ledger.waitForTimeout(800)
   check('Setup: ledger receives level phones', (await txt(ledger.locator('main'))).includes('40 / 40'))
+  // Warden W-38-WAR is activated by 3 signed vouches from L38 residents (Mara + 2 level-phone residents).
+  let wardenText = ''
+  for (let i = 0; i < 20 && !/Active · vouched by 3 of L38/i.test(wardenText); i++) {
+    await warden.waitForTimeout(250)
+    wardenText = await txt(warden.locator('main'))
+  }
+  check('Setup: warden W-38-WAR active, vouched by 3 L38 residents', /Active · vouched by 3 of L38/i.test(wardenText))
+  check("Setup: Teo's vouch (L36) shown but not counted", /\+1 other level, not counted/i.test(wardenText))
 
   // Step 1–2: check-ins, family okay
   // I'M OKAY, then SEND NOW (skip the optional details) = the default check-in.
@@ -97,6 +105,13 @@ const has = (text, needle) => text.toLowerCase().includes(needle.toLowerCase())
   await ledger.getByRole('button', { name: 'L38', exact: true }).click()
   const det = await txt(ledger.locator('tr', { hasText: 'Sources' }))
   check('Step 7: L38 counts include terminal + warden reports', /via terminal/i.test(det) && /via warden/i.test(det), (det.match(/Sources:[^.]*/i) || [''])[0])
+
+  // Step 7b: an impostor with a valid signature but an unvouched key
+  await sim.getByRole('button', { name: 'Impostor warden confirms outbreak on L38' }).click()
+  await ledger.waitForTimeout(1000)
+  const heldTxt = await txt(ledger.locator('section', { hasText: 'Held back' }))
+  check('Step 7b: impostor warden confirmation rejected', /L38 · W-38-WAR confirms outbreak · unverified warden, rejected/i.test(heldTxt))
+  check('Step 7b: genuine warden confirmation still stands', /Level 38 · OUTBREAK.*confirmed by warden W-38/i.test(await txt(ledger.locator('section', { hasText: 'Outbreak watch' }).first())))
 
   // Step 8: trust
   await sim.selectOption('select', '5')

@@ -5,7 +5,8 @@ import { useSearchParams } from 'react-router-dom'
 import { Shell } from '../../components/Shell'
 import { MoodIcon } from '../../components/MoodIcon'
 import { Button, Explain, Sign, StateTag, Trust } from '../../components/ui'
-import { sendCare } from '../../lib/care'
+import { activeWardenCount, sendCareToWardens } from '../../lib/care'
+import { feedRegistry } from '../../lib/wardenRegistry'
 import { SYMPTOMS, type CheckIn, type Symptom, type WaterReport } from '../../lib/db'
 import { getDeviceId } from '../../lib/device'
 import { MeshNode } from '../../lib/mesh'
@@ -68,6 +69,8 @@ function Terminal({ level }: { level: number }) {
   const [step, setStep] = useState<Step>('unit')
   const [d, setD] = useState<Draft>(EMPTY)
   const [countdown, setCountdown] = useState(0)
+  /** How many vouched wardens the last note was encrypted to. */
+  const [wardensTold, setWardensTold] = useState(0)
   const nodeRef = useRef<MeshNode | null>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const lastInput = useRef(Date.now())
@@ -78,8 +81,11 @@ function Terminal({ level }: { level: number }) {
         const w = getWorld()
         return { nodeId: `terminal-L${level}-${getDeviceId()}`, level, netUp: w ? isNetworkUp(w, level) : true }
       },
+      // Learn the level's wardens and their vouches (signatures checked) so notes go only to real ones.
+      onDeliver: (p) => feedRegistry(p.body),
     })
     nodeRef.current = node
+    setTimeout(() => node.send({ kind: 'sync-req', requestId: `sync-term-${getDeviceId()}-${Date.now().toString(36)}`, want: ['wardens'] }), 200)
     return () => node.close()
   }, [level])
 
@@ -135,7 +141,8 @@ function Terminal({ level }: { level: number }) {
         { kind: 'summary', level, tick, source: 'terminal', counts: countsFromCheckIn({ ...final }) },
         { anonymous: true },
       )
-      void sendCare(node, {
+      setWardensTold(activeWardenCount(level))
+      void sendCareToWardens(node, {
         type: 'care',
         level,
         unit: `${level}-${final.unit}`,
@@ -307,9 +314,12 @@ function Terminal({ level }: { level: number }) {
         {step === 'done' && (
           <Panel title={`Unit ${level}-${d.unit} · done`} headingRef={headingRef}>
             <StateTag state={d.okay ? 'normal' : 'danger'} className="text-3xl">
-              {d.okay ? 'Checked in · okay' : 'Warden told'}
+              {d.okay ? 'Checked in · okay' : wardensTold > 0 ? 'Warden told' : 'No vouched warden'}
             </StateTag>
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+              <Trust tone={wardensTold > 0 ? 'ok' : 'warn'}>
+                {wardensTold > 0 ? `Sealed to ${wardensTold} vouched warden${wardensTold > 1 ? 's' : ''}` : 'No vouched warden on this level'}
+              </Trust>
               <Trust>Counted anonymously · L{level}</Trust>
               <Trust>Nothing kept here</Trust>
             </div>

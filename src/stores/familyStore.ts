@@ -2,7 +2,11 @@
 import { create } from 'zustand'
 import { AlertEmitter, alertForLevel } from '../lib/alerts'
 import type { CheckIn, FamilyMember, FamilyMessage, LanternDB, Profile } from '../lib/db'
-import { sendCare } from '../lib/care'
+import { sendCareToWardens } from '../lib/care'
+import { autoVouchesForDemoWarden, DEMO_WARDEN_BADGE, DEMO_WARDEN_LEVEL } from '../lib/demoVouch'
+import type { DeviceKey } from '../lib/db'
+import { fingerprint, generateSigningKeys, msg, sign } from '../lib/wardenCrypto'
+import { feedRegistry, useWardenRegistry, vouchPacketId } from '../lib/wardenRegistry'
 import { countsFromCheckIn } from '../lib/reports'
 import { deriveFamilyKey, openJson, sealJson, type FamilyKey } from '../lib/familyCrypto'
 import { MeshNode, type AlertBody, type Hop, type Link, type Packet } from '../lib/mesh'
@@ -40,6 +44,8 @@ interface Ctx {
   db: LanternDB
   key: FamilyKey
   node: MeshNode
+  deviceKey: DeviceKey
+  deviceFp: string
   getLastCheckIn: () => { tick: number; okay: boolean } | null
   cleanup: (() => void)[]
 }
@@ -50,6 +56,10 @@ interface FamilyState {
   messages: FamilyMessage[]
   alerts: Record<number, ReceivedAlert>
   neighbours: Record<string, Neighbour>
+  /** Fingerprint of this device's vouching key. */
+  deviceFp: string
+  /** Sign and broadcast "I vouch for this warden key" (residents only vouch for their own level's wardens in the UI). */
+  vouch: (wardenFp: string) => Promise<void>
   start: (args: {
     profile: Profile
     db: LanternDB
@@ -81,11 +91,35 @@ export const useFamily = create<FamilyState>((set, get) => ({
   messages: [],
   alerts: {},
   neighbours: {},
+  deviceFp: '',
+
+  vouch: async (wardenFp) => {
+    const c = ctx
+    if (!c) return
+    const level = c.profile.level
+    const body = {
+      kind: 'vouch' as const,
+      voucherLevel: level,
+      wardenFp,
+      voucherPub: c.deviceKey.signPub,
+      sig: await sign(c.deviceKey.signPriv, msg.vouch(level, wardenFp)),
+    }
+    void useWardenRegistry.getState().ingest(body)
+    c.node.send(body, { id: vouchPacketId(c.deviceFp, wardenFp) })
+  },
 
   start: async ({ profile, db, deviceId, getLastCheckIn }) => {
     get().stop()
     const gen = ++generation
     const key = await deriveFamilyKey(profile.familyCode)
+    // This device's vouching key (created once, kept in its own IndexedDB).
+    let deviceKey = await db.keys.get('me')
+    if (!deviceKey) {
+      const k = await generateSigningKeys()
+      deviceKey = { id: 'me', signPriv: k.privateKey, signPub: k.publicJwk }
+      await db.keys.put(deviceKey)
+    }
+    const deviceFp = await fingerprint(deviceKey.signPub)
     const [members, messages] = await Promise.all([db.family.toArray(), db.messages.orderBy('ts').reverse().limit(50).toArray()])
     if (gen !== generation) return
     set({ members: Object.fromEntries(members.map((m) => [m.memberId, m])), messages })
@@ -94,6 +128,7 @@ export const useFamily = create<FamilyState>((set, get) => ({
       const c = ctx
       if (!c) return
       const body = p.body
+      feedRegistry(body) // warden keys and vouches: each checked against its signature
       if (body.kind === 'alert') {
         if (body.level === c.profile.level) return // our own meter is authoritative for our level
         set({ alerts: { ...get().alerts, [body.level]: { ...body, route: p.path, receivedAt: Date.now() } } })
@@ -162,7 +197,7 @@ export const useFamily = create<FamilyState>((set, get) => ({
       },
     })
 
-    const c: Ctx = { profile, db, key, node, getLastCheckIn, cleanup: [] }
+    const c: Ctx = { profile, db, key, node, deviceKey, deviceFp, getLastCheckIn, cleanup: [] }
     ctx = c
 
     // Watch our own level's meter; broadcast a public alert when the risk band changes.
@@ -184,8 +219,23 @@ export const useFamily = create<FamilyState>((set, get) => ({
     }, 5_000)
     c.cleanup.push(() => clearInterval(hb), () => clearInterval(prune))
 
-    set({ running: true })
-    node.send({ kind: 'sync-req', requestId: `sync-${deviceId}-${Date.now().toString(36)}`, want: ['alerts'] })
+    set({ running: true, deviceFp })
+    node.send({ kind: 'sync-req', requestId: `sync-${deviceId}-${Date.now().toString(36)}`, want: ['alerts', 'wardens'] })
+
+    // DEMO SETUP (src/lib/demoVouch.ts): Mara and Teo vouch for the first W-38-WAR key they hear.
+    if (autoVouchesForDemoWarden(profile)) {
+      let done = false
+      const check = () => {
+        if (done || !ctx) return
+        const reg = useWardenRegistry.getState()
+        const first = Object.values(reg.wardens).find((w) => w.badge === DEMO_WARDEN_BADGE && w.level === DEMO_WARDEN_LEVEL)
+        if (!first) return
+        done = true
+        if (!Object.values(reg.vouches).some((v) => v.voucherFp === deviceFp && v.wardenFp === first.fp)) void get().vouch(first.fp)
+      }
+      c.cleanup.push(useWardenRegistry.subscribe(check))
+      check()
+    }
     await sendFamily(c, { type: 'hello', memberId: profile.memberId })
     await get().sendStatus()
   },
@@ -227,7 +277,7 @@ export const useFamily = create<FamilyState>((set, get) => ({
       500 + Math.random() * 2500,
     )
     if (!checkIn.okay) {
-      await sendCare(c.node, {
+      await sendCareToWardens(c.node, {
         type: 'care',
         level: c.profile.level,
         unit: c.profile.unit,

@@ -2,6 +2,7 @@
 // reports (e.g. to trigger a panic, or to discredit the ledger). The ledger should hold it back.
 import { MeshNode } from './mesh'
 import { ZERO_COUNTS } from './reports'
+import { generateSigningKeys, msg, sign } from './wardenCrypto'
 
 export function injectFakeReports(level: number, tick: number, netUp: boolean) {
   const node = new MeshNode({ getInfo: () => ({ nodeId: `rogue-${Math.random().toString(36).slice(2, 6)}`, level, netUp }), relay: false })
@@ -13,5 +14,18 @@ export function injectFakeReports(level: number, tick: number, netUp: boolean) {
     source: 'unknown',
     counts: { ...ZERO_COUNTS, reports: n, okay: n, symptomatic: 290, fever: 290, moodSum: n * 3, sleepSum: n * 7 },
   })
+  setTimeout(() => node.close(), 1000)
+}
+
+/**
+ * SIMULATED ATTACK: an impostor claims to be the L38 warden. It has a real keypair and a perfectly
+ * valid signature — but nobody on the level has vouched for its key, so every Lantern device that
+ * checks (the ledger, residents) rejects the confirmation.
+ */
+export async function injectImpostorConfirm(level: number, tick: number, netUp: boolean) {
+  const keys = await generateSigningKeys()
+  const v = { level, claim: 'outbreak' as const, confirmed: true, badge: `W-${level}-WAR`, tick, note: 'I am the warden. Confirmed.' }
+  const node = new MeshNode({ getInfo: () => ({ nodeId: `impostor-${Math.random().toString(36).slice(2, 6)}`, level, netUp }), relay: false })
+  node.send({ kind: 'verify', ...v, signPub: keys.publicJwk, sig: await sign(keys.privateKey, msg.verify(v)) })
   setTimeout(() => node.close(), 1000)
 }

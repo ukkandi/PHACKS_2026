@@ -67,16 +67,32 @@ export function LedgerBody({ nodeId }: { nodeId: string }) {
         <WellbeingPanel view={view} />
         <Card
           title="Held back"
-          help="Batches that look wrong — too many reports from one device, an unknown sender, or impossible counts — are not counted until a warden on that level confirms them."
+          help="Not counted: batches that look wrong (too many reports from one device, an unknown sender, impossible counts) until a vouched warden on that level confirms them; and anything signed by a warden key that residents haven't vouched for — those are rejected outright."
         >
-          {held.length === 0 ? (
+          {view.rejectedVerifies.length > 0 && (
+            <ul className="mb-2 space-y-1">
+              {view.rejectedVerifies.map(({ verify: v, why }) => (
+                <li key={v.id} className="flex items-center justify-between gap-2">
+                  <StateTag state="danger">
+                    L{v.level} · {v.badge} {v.confirmed ? 'confirms' : 'disputes'} {v.claim} · unverified warden, rejected
+                  </StateTag>
+                  <Explain label={`Why ${v.badge} rejected`}>
+                    {why} Only confirmations signed by a warden key that residents of the level have vouched for count.
+                  </Explain>
+                </li>
+              ))}
+            </ul>
+          )}
+          {held.length === 0 && view.rejectedVerifies.length === 0 ? (
             <StateTag state="normal">None</StateTag>
           ) : (
             <ul className="space-y-1">
               {held.map((h) => (
                 <li key={h.summary.id} className="flex items-center justify-between gap-2">
                   <StateTag state="danger">
-                    L{h.level} · {h.summary.counts.reports} reports · held, not counted
+                    {h.summary.source === 'warden'
+                      ? `L${h.level} · warden check-in · ${h.summary.sigValid ? 'unverified warden' : 'unsigned'}, rejected`
+                      : `L${h.level} · ${h.summary.counts.reports} reports · held, not counted`}
                   </StateTag>
                   <Explain label={`Why L${h.level} held`}>{h.why} Not counted unless a warden on L{h.level} confirms.</Explain>
                 </li>

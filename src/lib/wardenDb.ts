@@ -2,6 +2,7 @@
 // devices) and care notes received over the sealed care channel. Never leaves this device.
 import Dexie, { type EntityTable } from 'dexie'
 import type { CarePayload } from './care'
+import type { PubJwk } from './wardenCrypto'
 
 export interface RosterEntry {
   unit: string
@@ -20,14 +21,26 @@ export interface CareEntry extends CarePayload {
   receivedAt: number
 }
 
+/** This warden device's keypairs. Private keys are non-extractable CryptoKeys: they never leave the device. */
+export interface WardenKeys {
+  id: 'me'
+  badge: string
+  signPriv: CryptoKey
+  signPub: PubJwk
+  encPriv: CryptoKey
+  encPub: PubJwk
+}
+
 export type WardenDB = Dexie & {
   roster: EntityTable<RosterEntry, 'unit'>
   care: EntityTable<CareEntry, 'id'>
+  keys: EntityTable<WardenKeys, 'id'>
 }
 
 export function openWardenDb(deviceId: string, level: number): WardenDB {
   const db = new Dexie(`lantern-warden-${deviceId}-L${level}`) as WardenDB
   db.version(1).stores({ roster: 'unit', care: '++id, unit, tick' })
+  db.version(2).stores({ keys: 'id' })
   return db
 }
 

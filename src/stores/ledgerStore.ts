@@ -13,6 +13,8 @@ import {
 } from '../lib/ledger'
 import { hopCount, MeshNode, type Packet, type SyncBody, type VoteBody } from '../lib/mesh'
 import { isResetting } from '../lib/demoReset'
+import { checkSummary, checkVerify } from '../lib/signedItems'
+import { feedRegistry, useWardenRegistry } from '../lib/wardenRegistry'
 import { getWorld } from '../lib/worldFeed'
 import { isNetworkUp } from '../sim/world'
 
@@ -77,32 +79,42 @@ export const useLedger = create<LedgerState>((set, get) => ({
 
   start: ({ nodeId, level = LEDGER_LEVEL, onSealed }) => {
     if (node) return
-    const ingestSync = (b: SyncBody) => {
+    const ingestSync = async (b: SyncBody) => {
       const now = Date.now()
+      // Check warden signatures before merging (only warden items carry them).
+      const checkedSummaries = b.summaries
+        ? await Promise.all(b.summaries.map(async (s) => ({ ...s, ...(await checkSummary(s)) })))
+        : undefined
+      const checkedVerifies = b.verifies
+        ? await Promise.all(b.verifies.map(async (v) => ({ ...v, ...(await checkVerify(v)) })))
+        : undefined
       const maxTick = Math.max(0, ...(b.summaries ?? []).map((s) => s.tick))
       const before = get().summaries.length
-      const summaries = b.summaries ? mergeSummaries(get().summaries, b.summaries, currentTick(maxTick), now) : get().summaries
+      const summaries = checkedSummaries ? mergeSummaries(get().summaries, checkedSummaries, currentTick(maxTick), now) : get().summaries
       set({
         summaries,
         alerts: b.alerts ? mergeAlerts(get().alerts, b.alerts, now) : get().alerts,
-        verifies: b.verifies ? mergeVerifies(get().verifies, b.verifies, now) : get().verifies,
+        verifies: checkedVerifies ? mergeVerifies(get().verifies, checkedVerifies, now) : get().verifies,
         votes: b.votes ? mergeVotes(get().votes, b.votes) : get().votes,
         caughtUp: get().caughtUp + Math.max(0, summaries.length - before),
       })
     }
-    const onDeliver = (p: Packet) => {
+    const onDeliver = async (p: Packet) => {
       const b = p.body
       const now = Date.now()
+      feedRegistry(b) // warden keys, vouches (and those inside catch-up replies)
       if (b.kind === 'summary') {
-        set({ summaries: mergeSummaries(get().summaries, [{ ...b, id: p.id, hops: hopCount(p.path) }], currentTick(b.tick), now) })
+        const sig = await checkSummary(b)
+        set({ summaries: mergeSummaries(get().summaries, [{ ...b, ...sig, id: p.id, hops: hopCount(p.path) }], currentTick(b.tick), now) })
       } else if (b.kind === 'alert') {
         set({ alerts: mergeAlerts(get().alerts, [b], now) })
       } else if (b.kind === 'verify') {
-        set({ verifies: mergeVerifies(get().verifies, [{ ...b, id: p.id }], now) })
+        const sig = await checkVerify(b)
+        set({ verifies: mergeVerifies(get().verifies, [{ ...b, ...sig, id: p.id }], now) })
       } else if (b.kind === 'vote') {
         set({ votes: mergeVotes(get().votes, [b]) })
       } else if (b.kind === 'sync') {
-        ingestSync(b)
+        await ingestSync(b)
       } else if (b.kind === 'sync-req') {
         // Another device just joined: share our copy (jittered so several copies don't collide).
         if (answered.has(b.requestId) || (get().summaries.length === 0 && Object.keys(get().votes).length === 0)) return
@@ -114,22 +126,28 @@ export const useLedger = create<LedgerState>((set, get) => ({
               kind: 'sync',
               requestId: b.requestId,
               from: 'ledger-copy',
-              summaries: b.want.includes('summaries') ? summaries.map(({ receivedAt: _r, hops: _h, ...s }) => s) : undefined,
+              // Local check results are stripped: every receiver re-checks signatures itself.
+              summaries: b.want.includes('summaries')
+                ? summaries.map(({ receivedAt: _r, hops: _h, signerFp: _f, sigValid: _v, ...s }) => s)
+                : undefined,
               alerts: b.want.includes('alerts') ? Object.values(alerts).map(({ receivedAt: _r, ...a }) => a) : undefined,
-              verifies: b.want.includes('verifies') ? verifies.map(({ receivedAt: _r, ...v }) => v) : undefined,
+              verifies: b.want.includes('verifies')
+                ? verifies.map(({ receivedAt: _r, signerFp: _f, sigValid: _v, ...v }) => v)
+                : undefined,
               votes: b.want.includes('votes') ? Object.values(votes) : undefined,
+              ...(b.want.includes('wardens') ? useWardenRegistry.getState().shareable() : {}),
             })
           },
           150 + Math.random() * 450,
         )
-      } else if (b.kind === 'sealed') onSealed?.(p) // unreadable unless the caller holds the key
+      } else if (b.kind === 'sealed' || b.kind === 'care-sealed') onSealed?.(p) // unreadable unless the caller holds the key
     }
     node = new MeshNode({
       getInfo: () => {
         const w = getWorld()
         return { nodeId, level, netUp: w ? isNetworkUp(w, level) : true }
       },
-      onDeliver,
+      onDeliver: (p) => void onDeliver(p),
     })
     saveTimer = setInterval(() => {
       if (isResetting()) return
@@ -148,7 +166,7 @@ export const useLedger = create<LedgerState>((set, get) => ({
     answered.add(requestId)
     const ask = (id: string) => {
       answered.add(id)
-      node?.send({ kind: 'sync-req', requestId: id, want: ['summaries', 'alerts', 'verifies', 'votes'] })
+      node?.send({ kind: 'sync-req', requestId: id, want: ['summaries', 'alerts', 'verifies', 'votes', 'wardens'] })
     }
     setTimeout(() => ask(requestId), 200)
     // If nobody answered (e.g. the simulator tab was still loading), ask once more.

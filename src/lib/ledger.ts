@@ -5,16 +5,34 @@ import { detectOutbreak, median, type OutbreakResult, type Tally } from './outbr
 import { addCounts, countsAreConsistent, ZERO_COUNTS, type ReportCounts } from './reports'
 import { LEVEL_COUNT } from '../sim/types'
 
-export interface StoredSummary extends SummaryBody {
+/** Result of checking a warden signature on arrival (signature only; vouching is checked at view time). */
+export interface SignatureCheck {
+  /** Fingerprint of the key that signed (undefined if unsigned). */
+  signerFp?: string
+  sigValid?: boolean
+}
+
+export interface StoredSummary extends SummaryBody, SignatureCheck {
   id: string
   receivedAt: number
   hops: number
 }
 
-export interface StoredVerify extends VerifyBody {
+export interface StoredVerify extends VerifyBody, SignatureCheck {
   id: string
   receivedAt: number
 }
+
+/**
+ * Decides whether a warden-signed item is acceptable: null = accept, otherwise the reason it's
+ * rejected. Built from this device's vouch registry; the default trusts no one.
+ */
+export type WardenCheck = (signerFp: string | undefined, sigValid: boolean | undefined, level: number) => string | null
+
+export const UNSIGNED_REASON = 'Unsigned or forged warden signature — rejected.'
+
+export const rejectAllWardens: WardenCheck = (fp, ok) =>
+  !fp || !ok ? UNSIGNED_REASON : 'Unverified warden: key not vouched by residents of this level — rejected.'
 
 export interface StoredAlert extends AlertBody {
   receivedAt: number
@@ -49,12 +67,19 @@ export interface LevelView {
   heldBack: { summary: StoredSummary; why: string }[]
 }
 
+export interface RejectedVerify {
+  verify: StoredVerify
+  why: string
+}
+
 export interface LedgerView {
   tick: number
   levels: LevelView[]
   hollowMedianRate: number
   totalReports: number
   levelsReporting: number
+  /** Warden confirmations that failed authentication (unsigned, forged, or from an unvouched key). */
+  rejectedVerifies: RejectedVerify[]
 }
 
 /**
@@ -94,8 +119,12 @@ export function mergeVerifies(existing: StoredVerify[], incoming: (VerifyBody & 
   return added.length ? [...existing, ...added].slice(-200) : existing
 }
 
-/** Why a summary looks wrong, or null if it looks fine. */
-export function anomalyReason(s: SummaryBody): string | null {
+/** Why a summary looks wrong, or null if it looks fine. Warden check-ins must carry a valid, vouched signature. */
+export function anomalyReason(s: SummaryBody & SignatureCheck, wardenCheck: WardenCheck = rejectAllWardens): string | null {
+  if (s.source === 'warden') {
+    const why = wardenCheck(s.signerFp, s.sigValid, s.level)
+    if (why) return why
+  }
   if (!countsAreConsistent(s.counts)) return 'Counts are internally inconsistent.'
   if (s.source === 'unknown') return 'Sender did not identify as a resident, terminal, warden or level phone.'
   const max = MAX_PER_HOUR * Math.min(48, Math.max(1, s.hours ?? 1))
@@ -110,9 +139,19 @@ const share = (k: number, n: number) => (n > 0 ? k / n : 0)
 export function buildLedger(
   summaries: StoredSummary[],
   alerts: Record<number, StoredAlert>,
-  verifies: StoredVerify[],
+  allVerifies: StoredVerify[],
   tick: number,
+  wardenCheck: WardenCheck = rejectAllWardens,
 ): LedgerView {
+  // Only authenticated confirmations from vouched wardens count; the rest are reported, not used.
+  const verifies: StoredVerify[] = []
+  const rejectedVerifies: RejectedVerify[] = []
+  for (const v of allVerifies) {
+    const why = wardenCheck(v.signerFp, v.sigValid, v.level)
+    if (why) {
+      if (v.tick >= tick - WINDOW) rejectedVerifies.push({ verify: v, why })
+    } else verifies.push(v)
+  }
   const per = Array.from({ length: LEVEL_COUNT }, () => ({
     cur: { ...ZERO_COUNTS },
     base: { n: 0, k: 0 } as Tally,
@@ -130,8 +169,10 @@ export function buildLedger(
     const age = tick - s.tick
     if (age < 0 || age >= BASELINE_FROM) continue
     if (s.conditions && (!p.conditions || s.tick >= p.conditions.tick)) p.conditions = { ...s.conditions, tick: s.tick }
-    const why = anomalyReason(s)
-    if (why && !(confirmedReports.has(s.level) && countsAreConsistent(s.counts))) {
+    const why = anomalyReason(s, wardenCheck)
+    // A warden confirmation can admit an odd-looking batch — never an unauthenticated warden one.
+    const authFailure = s.source === 'warden' && why !== null
+    if (why && (authFailure || !(confirmedReports.has(s.level) && countsAreConsistent(s.counts)))) {
       if (age < WINDOW) p.held.push({ summary: s, why })
       continue
     }
@@ -180,6 +221,7 @@ export function buildLedger(
     hollowMedianRate,
     totalReports: levels.reduce((a, l) => a + l.reports, 0),
     levelsReporting: levels.filter((l) => l.reports > 0).length,
+    rejectedVerifies,
   }
 }
 

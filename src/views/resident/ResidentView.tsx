@@ -16,6 +16,7 @@ import { MeshStatus } from './MeshStatus'
 import { MessagesCard } from './MessagesCard'
 import { DEMO_FAMILY, PRESETS, Setup } from './Setup'
 import { WarningBanner } from './WarningBanner'
+import { WardensCard } from './WardensCard'
 
 export function ResidentView() {
   const { loaded, profile, load, deviceId, forgetDevice, db } = useResident()
@@ -124,6 +125,7 @@ export function ResidentView() {
         />
         <FamilyPanel tick={tick} />
         <MessagesCard />
+        <WardensCard level={profile.level} />
         <MeshAlertsCard />
         <HistoryCard />
         <Button

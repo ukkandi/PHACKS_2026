@@ -1,6 +1,7 @@
 // On-device storage. Personal data lives ONLY here (principle #2: privacy by design).
 import Dexie, { type EntityTable } from 'dexie'
 import type { Hop } from './mesh'
+import type { PubJwk } from './wardenCrypto'
 
 export interface Profile {
   key: 'me'
@@ -57,11 +58,22 @@ export interface FamilyMessage {
   route: Hop[]
 }
 
+/**
+ * This device's own signing key, used ONLY to vouch for wardens. Not an account: it is created on
+ * the device, never registered anywhere, and the private half can't be exported.
+ */
+export interface DeviceKey {
+  id: 'me'
+  signPriv: CryptoKey
+  signPub: PubJwk
+}
+
 export type LanternDB = Dexie & {
   profile: EntityTable<Profile, 'key'>
   checkins: EntityTable<CheckIn, 'id'>
   family: EntityTable<FamilyMember, 'memberId'>
   messages: EntityTable<FamilyMessage, 'id'>
+  keys: EntityTable<DeviceKey, 'id'>
 }
 
 const cache = new Map<string, LanternDB>()
@@ -78,6 +90,7 @@ export function openDeviceDb(deviceId: string): LanternDB {
     family: 'memberId',
     messages: 'id, ts',
   })
+  db.version(3).stores({ keys: 'id' })
   cache.set(deviceId, db)
   return db
 }

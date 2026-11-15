@@ -10,7 +10,7 @@ import { isNetworkUp, tickLabel } from '../../sim/world'
 import { LevelTable } from './LevelTable'
 import { MeshMonitor } from './MeshMonitor'
 import { startRelays } from '../../lib/relays'
-import { injectFakeReports } from '../../lib/spoof'
+import { injectFakeReports, injectImpostorConfirm } from '../../lib/spoof'
 
 const DEEP_LEVELS = [34, 35, 36, 37, 38, 39, 40]
 
@@ -152,6 +152,13 @@ export function SimView() {
                 onClick={() => injectFakeReports(level, world.tick, isNetworkUp(world, level))}
               >
                 Rogue device: inject 300 fake reports on L{level}
+              </Button>
+              <Button
+                tone="danger"
+                className="col-span-2"
+                onClick={() => void injectImpostorConfirm(level, world.tick, isNetworkUp(world, level))}
+              >
+                Impostor warden confirms outbreak on L{level}
               </Button>
             </div>
             <hr className="my-3 border-hollow-800" />

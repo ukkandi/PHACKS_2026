@@ -1,7 +1,9 @@
 import { useMemo } from 'react'
 import { recommendAllocation, type LevelNeedInput } from '../../lib/allocation'
 import { tallyVotes } from '../../lib/votes'
-import { buildLedger } from '../../lib/ledger'
+import { buildLedger, UNSIGNED_REASON, type WardenCheck } from '../../lib/ledger'
+import { shortFp } from '../../lib/wardenCrypto'
+import { isActiveWarden, useWardenRegistry, VOUCHES_REQUIRED, wardenStatuses } from '../../lib/wardenRegistry'
 import { useWorld } from '../../lib/worldFeed'
 import { directorateBulletin } from '../../sim/directorate'
 import { useLedger } from '../../stores/ledgerStore'
@@ -14,7 +16,23 @@ export function useLedgerView() {
   const priorities = tally.order
   const tick = world?.tick ?? summaries.reduce((m, s) => Math.max(m, s.tick), 0)
 
-  const view = useMemo(() => buildLedger(summaries, alerts, verifies, tick), [summaries, alerts, verifies, tick])
+  // Warden items count only if signed by a key this device has seen vouched by 3 residents of that level.
+  const wardens = useWardenRegistry((s) => s.wardens)
+  const vouches = useWardenRegistry((s) => s.vouches)
+  const wardenCheck = useMemo<WardenCheck>(() => {
+    const statuses = wardenStatuses(Object.values(wardens), Object.values(vouches))
+    return (fp, ok, level) =>
+      !fp || !ok
+        ? UNSIGNED_REASON
+        : isActiveWarden(statuses, fp, level)
+          ? null
+          : `Unverified warden: key ${shortFp(fp)} is not vouched by ${VOUCHES_REQUIRED} residents of L${level}. Rejected.`
+  }, [wardens, vouches])
+
+  const view = useMemo(
+    () => buildLedger(summaries, alerts, verifies, tick, wardenCheck),
+    [summaries, alerts, verifies, tick, wardenCheck],
+  )
   // SIMULATED: the Directorate's public bulletin arrives with the world feed.
   const bulletin = useMemo(() => (world ? directorateBulletin(world) : null), [world])
 

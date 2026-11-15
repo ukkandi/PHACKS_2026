@@ -4,6 +4,17 @@ import { Shell } from '../../components/Shell'
 import { Button, Card, Explain, Sign, StateTag, Trust } from '../../components/ui'
 import type { State } from '../../lib/status'
 import { MIN_REPORTS } from '../../lib/outbreak'
+import { shortFp } from '../../lib/wardenCrypto'
+import { useWardenRegistry, VOUCHES_REQUIRED, wardenStatuses } from '../../lib/wardenRegistry'
+
+/** This warden device's standing in its own registry: vouched by residents of its level, or not yet. */
+function useMyStatus() {
+  const fp = useWarden((s) => s.fp)
+  const wardens = useWardenRegistry((s) => s.wardens)
+  const vouches = useWardenRegistry((s) => s.vouches)
+  const st = wardenStatuses(Object.values(wardens), Object.values(vouches)).find((x) => x.warden.fp === fp)
+  return { fp, active: !!st?.active, same: st?.sameLevel ?? 0, other: st?.otherLevel ?? 0 }
+}
 import { getDeviceId } from '../../lib/device'
 import { triage, type TriageRow } from '../../lib/triage'
 import { useWorld } from '../../lib/worldFeed'
@@ -47,6 +58,7 @@ export function WardenView() {
 function Warden({ level }: { level: number }) {
   const world = useWorld()
   const { start, stop, badge, roster, care, relayed, checkInFor, markVisited, running } = useWarden()
+  const me = useMyStatus()
   const [open, setOpen] = useState<string | null>(null)
   const tick = world?.tick ?? 0
   const rows = useMemo(() => triage(roster, care, tick), [roster, care, tick])
@@ -73,12 +85,24 @@ function Warden({ level }: { level: number }) {
       }
     >
       <div className="space-y-3">
-        <Sign sub={`Warden ${badge || '…'} · block rounds`}>Level {level} · warden</Sign>
+        <Sign sub={`Warden ${badge || '…'} · key ${me.fp ? shortFp(me.fp) : '…'}`}>Level {level} · warden</Sign>
+        <div className={`flex flex-wrap items-center justify-between gap-2 border-2 px-3 py-2 ${me.active ? 'border-ok' : 'border-warn'}`}>
+          <StateTag state={me.active ? 'normal' : 'watch'} className="text-base">
+            {me.active ? `Active · vouched by ${me.same} of L${level}` : `Not active · ${me.same}/${VOUCHES_REQUIRED} vouches`}
+          </StateTag>
+          {me.other > 0 && <Trust tone="muted">+{me.other} other level, not counted</Trust>}
+          <Explain label="How warden activation works">
+            This device made its own keypair; the private key never leaves it. It becomes an active warden once{' '}
+            {VOUCHES_REQUIRED} residents of Level {level} vouch for its public key from their own devices (in person: they
+            check the key shown here). Every confirmation and check-in it sends is signed; the ledger and residents ignore
+            anything unsigned or from a key that isn't vouched. Care notes are encrypted to vouched wardens' keys only.
+          </Explain>
+        </div>
         <WarningBanner world={world} level={level} />
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-2 border-hollow-700 bg-hollow-900 px-3 py-2">
           <StateTag state="danger" className="text-base">{urgent} need help</StateTag>
           <StateTag state="watch" className="text-base">{watch} to check</StateTag>
-          <Trust>Care notes sealed to wardens</Trust>
+          <Trust>Care notes encrypted to this key</Trust>
         </div>
         <div className="grid gap-3 lg:grid-cols-[3fr_2fr]">
           <Card
@@ -111,7 +135,7 @@ function Warden({ level }: { level: number }) {
                       {r.roster?.visitedTick !== undefined && <Trust>Visited {tickLabel(r.roster.visitedTick)}</Trust>}
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <Button className="min-h-12" onClick={() => setOpen(open === r.unit ? null : r.unit)}>
+                      <Button className="min-h-12" disabled={!me.active} onClick={() => setOpen(open === r.unit ? null : r.unit)}>
                         Check in
                       </Button>
                       <Button className="min-h-12" tone="ghost" onClick={() => void markVisited(r.unit)}>
@@ -150,12 +174,13 @@ function VerifyCard({ level }: { level: number }) {
   const l = view.levels[level - 1]
   const [sent, setSent] = useState<string | null>(null)
   const act = (claim: 'outbreak' | 'water' | 'reports', confirmed: boolean, note: string) => {
-    verify(claim, confirmed, note)
+    void verify(claim, confirmed, note)
     setSent(`${confirmed ? 'Confirmed' : 'Disputed'} ${claim} · L${level}`)
   }
   const o = l.outbreak.status
   // Nothing to vouch for until the level has enough reports to flag something.
   const enough = l.reports >= MIN_REPORTS
+  const me = useMyStatus()
   return (
     <Card
       title={`Verify ledger · L${level}`}
@@ -174,13 +199,13 @@ function VerifyCard({ level }: { level: number }) {
             <Trust tone={enough ? 'ok' : 'muted'}>{l.reports} reports</Trust>
           </div>
           <div className="mt-1 grid grid-cols-2 gap-2">
-            <Button className="min-h-12" disabled={!enough} onClick={() => act('outbreak', true, 'Seen many sick neighbours on rounds.')}>
+            <Button className="min-h-12" disabled={!enough || !me.active} onClick={() => act('outbreak', true, 'Seen many sick neighbours on rounds.')}>
               Confirm outbreak
             </Button>
             <Button
               className="min-h-12"
               tone="ghost"
-              disabled={!enough}
+              disabled={!enough || !me.active}
               onClick={() => act('outbreak', false, 'Not seeing illness on rounds.')}
             >
               Dispute
@@ -196,13 +221,13 @@ function VerifyCard({ level }: { level: number }) {
             <StateTag state="nodata">Water · not enough data</StateTag>
           )}
           <div className="mt-1 grid grid-cols-2 gap-2">
-            <Button className="min-h-12" disabled={!enough} onClick={() => act('water', true, 'Tap water discoloured on this block.')}>
+            <Button className="min-h-12" disabled={!enough || !me.active} onClick={() => act('water', true, 'Tap water discoloured on this block.')}>
               Confirm water
             </Button>
             <Button
               className="min-h-12"
               tone="ghost"
-              disabled={!enough}
+              disabled={!enough || !me.active}
               onClick={() => act('water', false, 'Water looks and smells fine.')}
             >
               Dispute
@@ -216,10 +241,15 @@ function VerifyCard({ level }: { level: number }) {
               <Explain label="Why held">{l.heldBack[0].why}</Explain>
             </div>
             <div className="mt-1 grid grid-cols-2 gap-2">
-              <Button className="min-h-12" onClick={() => act('reports', true, 'Checked: these reports are real.')}>
+              <Button className="min-h-12" disabled={!me.active} onClick={() => act('reports', true, 'Checked: these reports are real.')}>
                 Count them
               </Button>
-              <Button className="min-h-12" tone="danger" onClick={() => act('reports', false, 'Not real: nobody here reported this.')}>
+              <Button
+                className="min-h-12"
+                tone="danger"
+                disabled={!me.active}
+                onClick={() => act('reports', false, 'Not real: nobody here reported this.')}
+              >
                 Mark fake
               </Button>
             </div>
