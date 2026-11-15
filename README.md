@@ -10,6 +10,16 @@ npm test                        # unit tests: sim, predictor, mesh, crypto, ledg
 node scripts/demo-check.cjs     # drives the full demo below in a headless browser (needs Playwright + dev server)
 ```
 
+## Deploy (Netlify)
+
+Everything is in `netlify.toml`: build `npm run build`, publish `dist`, Node 22, SPA fallback so deep links work.
+
+1. Netlify → **Add new site → Import an existing project → GitHub**, authorise, pick **ukkandi/PHACKS_2026**.
+2. Branch to deploy: **main**. Leave build settings as detected from `netlify.toml` and click **Deploy**.
+3. Optional: **Site configuration → Change site name** (e.g. `lantern-hollow` → `https://lantern-hollow.netlify.app`).
+
+Every push to `main` redeploys. All demo tabs must be on the same site (same origin) to talk to each other.
+
 ## Views
 
 | Route | Who | What |
