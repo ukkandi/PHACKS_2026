@@ -21,11 +21,14 @@ function hash(...xs: number[]): number {
   return h
 }
 
-/** Binomial-ish draw: n trials at probability p (normal approximation, clamped). */
+/**
+ * Exact binomial draw: one weighted coin per resident. (A rounded normal approximation clamped at
+ * zero is biased upward for small counts, which made quiet low-rate levels look like outbreaks.)
+ */
 function draw(rng: Rng, n: number, p: number): number {
-  const mean = n * p
-  const sd = Math.sqrt(n * p * (1 - p))
-  return Math.max(0, Math.min(n, Math.round(mean + rng.noise(sd * 2))))
+  let k = 0
+  for (let i = 0; i < n; i++) if (rng.next() < p) k++
+  return k
 }
 
 export function usersOnLevel(world: World, l: LevelState): number {
@@ -35,7 +38,7 @@ export function usersOnLevel(world: World, l: LevelState): number {
 
 /** Coarse counts for the residents on a level who checked in during the last `hours` hours. */
 export function standInCounts(world: World, l: LevelState, hours = STANDIN_EVERY): ReportCounts {
-  const rng = new Rng(hash(world.seed, world.tick, l.level))
+  const rng = new Rng(hash(world.seed, world.tick, l.level, hours))
   const expected = (usersOnLevel(world, l) * hours) / 24
   const n = Math.max(0, Math.round(expected + rng.noise(Math.sqrt(expected) * 2)))
   if (n === 0) return { ...ZERO_COUNTS }

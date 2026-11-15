@@ -22,6 +22,11 @@ function coolingLoad(temp: number): number {
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
+
+/** How fast symptom rates relax toward their target each hour. */
+const SYMPTOM_RELAX = 0.15
+const heatPush = (temp: number) => Math.max(0, temp - 40) * 0.002
+const waterPush = (quality: number) => Math.max(0, 70 - quality) * 0.0015
 const round = (v: number, dp = 2) => Math.round(v * 10 ** dp) / 10 ** dp
 
 function pushHistory(arr: number[], v: number): number[] {
@@ -42,6 +47,7 @@ export function createWorld(seed = DEFAULT_SEED): World {
     const baseLoad = round(powerCapacity * utilisation - coolingLoad(temperature), 2)
     const powerLoad = round(baseLoad + coolingLoad(temperature), 2)
     const symptomBaseline = round(0.02 + depth * 0.03 + rng.range(0, 0.01), 3)
+    const waterQuality = round(96 - depth * 10 + rng.noise(3), 1)
     levels.push({
       level,
       population: Math.round(rng.range(42, 58) * 1_000_000),
@@ -51,11 +57,12 @@ export function createWorld(seed = DEFAULT_SEED): World {
       surgeLoad: 0,
       surging: false,
       temperature,
-      waterQuality: round(96 - depth * 10 + rng.noise(3), 1),
+      waterQuality,
       airQuality: round(95 - depth * 18 + rng.noise(3), 1),
       blackout: false,
       networkUp: true,
-      symptomRate: symptomBaseline,
+      // Start at the steady state: heat (and poor water) keep deep levels a little sicker all the time.
+      symptomRate: round(symptomBaseline + (heatPush(temperature) + waterPush(waterQuality)) / SYMPTOM_RELAX, 4),
       symptomBaseline,
       outbreakLoad: 0,
       blackoutSince: null,
@@ -74,7 +81,7 @@ export function createWorld(seed = DEFAULT_SEED): World {
     rngState: rng.state,
     tick: 0,
     globalNetworkDown: false,
-    activeUsers: 12000,
+    activeUsers: 20000,
     levels,
     log: [{ tick: 0, text: 'Simulation started. All levels nominal.' }],
   }
@@ -137,11 +144,16 @@ export function tickWorld(world: World): World {
     const waterTarget = 96 - ((l.level - 1) / (LEVEL_COUNT - 1)) * 10
     next.waterQuality = round(clamp(l.waterQuality + (waterTarget - l.waterQuality) * 0.03, 0, 100), 1)
     // Symptoms decay toward baseline; heat and bad water push them up.
-    const heatPush = Math.max(0, next.temperature - 40) * 0.002
-    const waterPush = Math.max(0, 70 - next.waterQuality) * 0.0015
     next.outbreakLoad = round(l.outbreakLoad * 0.985, 4)
     const target = l.symptomBaseline + next.outbreakLoad
-    next.symptomRate = round(clamp(l.symptomRate + (target - l.symptomRate) * 0.15 + heatPush + waterPush, 0, 1), 4)
+    next.symptomRate = round(
+      clamp(
+        l.symptomRate + (target - l.symptomRate) * SYMPTOM_RELAX + heatPush(next.temperature) + waterPush(next.waterQuality),
+        0,
+        1,
+      ),
+      4,
+    )
 
     next.loadHistory = pushHistory(l.loadHistory, next.blackout ? 0 : next.powerLoad / l.powerCapacity)
     next.tempHistory = pushHistory(l.tempHistory, next.temperature)
@@ -217,7 +229,7 @@ export function applyAction(world: World, action: SimAction): World {
         w = updateLevel(
           w,
           level,
-          (l) => ({ outbreakLoad: Math.min(0.5, l.outbreakLoad + 0.12), symptomRate: Math.min(1, l.symptomRate + 0.1) }),
+          (l) => ({ outbreakLoad: Math.min(0.5, l.outbreakLoad + 0.2), symptomRate: Math.min(1, l.symptomRate + 0.15) }),
           `Level ${level}: fever and cough spreading.`,
         )
       }

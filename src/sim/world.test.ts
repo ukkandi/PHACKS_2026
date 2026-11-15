@@ -18,6 +18,12 @@ describe('world sim', () => {
     expect(w.levels[39].temperature).toBeGreaterThan(w.levels[0].temperature + 15)
   })
 
+  it('symptom rates start at steady state (no drift in a quiet day)', () => {
+    const w0 = createWorld()
+    const w = run(w0, 24)
+    for (let i = 0; i < 40; i++) expect(Math.abs(w.levels[i].symptomRate - w0.levels[i].symptomRate)).toBeLessThan(0.02)
+  })
+
   it('no blackouts in a quiet day', () => {
     const w = run(createWorld(), 48)
     expect(w.levels.filter((l) => l.blackout)).toHaveLength(0)

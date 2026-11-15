@@ -71,14 +71,14 @@ export function startRelays(getWorld: () => World): RelayFleet {
     nodes.push(node)
   }
 
-  const sendBatch = (node: MeshNode, w: World, i: number, hours: number, id: string) => {
+  const sendBatch = (node: MeshNode, w: World, i: number, hours: number, id: string, tick = w.tick) => {
     const l = w.levels[i]
     const counts = standInCounts(w, l, hours)
     if (counts.reports === 0) return
     const body: SummaryBody = {
       kind: 'summary',
       level: l.level,
-      tick: w.tick,
+      tick,
       source: 'standin',
       hours,
       counts,
@@ -89,7 +89,14 @@ export function startRelays(getWorld: () => World): RelayFleet {
     log.push({ ...body, id })
     dirty = true
   }
-  const backfill = (w: World) => nodes.forEach((node, i) => sendBatch(node, w, i, 12, `standin-${w.seed}-L${i + 1}-backfill`))
+  // What each level phone already holds when the demo starts: the last 12 hours, plus the 36 hours
+  // before that (dated 12h back) so every level has its own normal baseline from the first minute —
+  // otherwise naturally hotter, sicker deep levels would be compared with the Hollow-wide median.
+  const backfill = (w: World) =>
+    nodes.forEach((node, i) => {
+      sendBatch(node, w, i, 36, `standin-${w.seed}-L${i + 1}-backfill-history`, w.tick - 12)
+      sendBatch(node, w, i, 12, `standin-${w.seed}-L${i + 1}-backfill`)
+    })
 
   const onWorld = (w: World) => {
     const newHour = w.tick !== lastTick

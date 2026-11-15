@@ -21,8 +21,10 @@ export interface OutbreakResult {
 
 /** Need at least this many reports before saying anything. */
 export const MIN_REPORTS = 20
-export const OUTBREAK_Z = 3
-export const WATCH_Z = 2
+export const OUTBREAK_Z = 3.5
+export const WATCH_Z = 2.5
+/** An outbreak needs at least this many more symptomatic reports than the baseline predicts. */
+export const MIN_EXCESS = 5
 
 /** Reports needed before a level's own history is trusted as its baseline. */
 export const MIN_BASELINE = 200
@@ -41,12 +43,22 @@ export function detectOutbreak(current: Tally, baseline: Tally | null, hollowMed
   if (n < MIN_REPORTS) {
     return { status: 'insufficient', rate, baselineRate: p0, baselineSource, z: 0, n, reason: `Only ${n} report${n === 1 ? "" : "s"} — not enough to tell.` }
   }
-  const z = (rate - p0) / Math.sqrt((p0 * (1 - p0)) / n)
+  // With a level's own history, both rates are samples: use a two-proportion z-test (pooled
+  // variance over both windows). Against the Hollow-wide prior, a one-sample test.
+  const z = useHistory
+    ? (() => {
+        const pooled = (current.k + baseline.k) / (n + baseline.n)
+        const se = Math.sqrt(Math.max(pooled * (1 - pooled), 1e-6) * (1 / n + 1 / baseline.n))
+        return (rate - p0) / se
+      })()
+    : (rate - p0) / Math.sqrt((p0 * (1 - p0)) / n)
   const pct = (v: number) => `${(v * 100).toFixed(1)}%`
   const vs = baselineSource === 'history' ? "this level's usual" : 'the Hollow-wide median'
+  // Also require a real number of extra sick people: a z-score on 3 expected cases means little.
+  const excess = current.k - n * p0
   let status: OutbreakStatus = 'normal'
-  if (z >= OUTBREAK_Z && rate >= p0 * 1.5) status = 'outbreak'
-  else if (z >= WATCH_Z) status = 'watch'
+  if (z >= OUTBREAK_Z && rate >= p0 * 1.5 && excess >= MIN_EXCESS) status = 'outbreak'
+  else if (z >= WATCH_Z && excess >= MIN_EXCESS / 2) status = 'watch'
   const reason =
     status === 'outbreak'
       ? `${pct(rate)} of ${n} recent reports have symptoms vs ${vs} ${pct(p0)} — far beyond chance (z=${z.toFixed(1)}).`
