@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
-import { Button, Card, SimTag } from '../../components/ui'
-import { LEDGER_LEVEL, useLedger } from '../../stores/ledgerStore'
+import { Button, Card, Explain, StateTag, Trust } from '../../components/ui'
+import { useLedger } from '../../stores/ledgerStore'
 import { tickLabel } from '../../sim/world'
 import { AllocationPanel } from './AllocationPanel'
+import { rowState } from './boardState'
 import { HollowMap } from './HollowMap'
 import { OutbreakPanel } from './OutbreakPanel'
 import { useLedgerView } from './useLedgerView'
@@ -26,60 +27,59 @@ export function LedgerBody({ nodeId }: { nodeId: string }) {
     URL.revokeObjectURL(url)
   }
 
+  const states = view.levels.map((l) => rowState(l, bulletin?.levels[l.level - 1]))
+  const count = (s: string) => states.filter((x) => x === s).length
   const held = view.levels.flatMap((l) => l.heldBack.map((h) => ({ level: l.level, ...h })))
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Reports, last 12h" value={view.totalReports.toLocaleString()} />
-        <Stat label="Levels reporting" value={`${view.levelsReporting} / 40`} />
-        <Stat label="Outbreaks flagged" value={String(view.levels.filter((l) => l.outbreak.status === 'outbreak').length)} danger />
-        <Stat label="Hollow time" value={tickLabel(tick)} />
+    <div className="space-y-3">
+      {/* Status line: readable in two seconds. */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-2 border-hollow-700 bg-hollow-900 px-3 py-2">
+        <StateTag state="danger" className="text-base">{count('danger')} danger</StateTag>
+        <StateTag state="watch" className="text-base">{count('watch')} watch</StateTag>
+        <StateTag state="normal" className="text-base">{count('normal')} normal</StateTag>
+        <span className="font-mono text-sm text-lamp">{tickLabel(tick)}</span>
       </div>
-      {view.levelsReporting < 40 && (
-        <p role="status" className="rounded-lg border border-hollow-700 p-2 text-sm text-hollow-300">
-          This ledger node is still filling in: level phones report every 3 hours, so a newly joined node needs a few
-          hours of Hollow time to see every level.
-        </p>
-      )}
-      <p className="text-xs text-hollow-500">
-        Anonymous counts only — no names, units or device ids ever reach the ledger. This copy is kept by a ledger node on
-        Level {LEDGER_LEVEL} <SimTag>placement</SimTag>; anyone can run one and get the same numbers.{' '}
-        <Button tone="ghost" className="!min-h-8 !px-2 underline" onClick={download}>
-          Download raw data (JSON)
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <Trust tone="ok">Based on {view.totalReports.toLocaleString()} reports · 12 h</Trust>
+        <Trust tone={view.levelsReporting < 40 ? 'warn' : 'ok'}>{view.levelsReporting} / 40 levels reporting</Trust>
+        <Trust>Anonymous counts only</Trust>
+        <Button tone="ghost" className="!min-h-8 !px-2 text-xs underline" onClick={download}>
+          Raw data ↓
         </Button>
-      </p>
+        <Explain label="About this ledger">
+          No names, units or device ids ever reach the ledger: only per-level counts. This copy is kept by a ledger node on
+          Level 20 (simulated placement); anyone can run one and get the same numbers, and the raw data can be downloaded and
+          recounted.
+          {view.levelsReporting < 40 && ' This node is still filling in — level phones report every 3 hours.'}
+        </Explain>
+      </div>
 
+      <HollowMap view={view} bulletin={bulletin} />
       <OutbreakPanel view={view} bulletin={bulletin} />
       <AllocationPanel plan={plan} bulletin={bulletin} tally={tally} />
-      <HollowMap view={view} bulletin={bulletin} />
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         <WellbeingPanel view={view} />
-        <Card title="Held back (unverified)">
+        <Card
+          title="Held back"
+          help="Batches that look wrong — too many reports from one device, an unknown sender, or impossible counts — are not counted until a warden on that level confirms them."
+        >
           {held.length === 0 ? (
-            <p className="text-sm text-hollow-500">No suspicious reports in the last 12h.</p>
+            <StateTag state="normal">None</StateTag>
           ) : (
-            <ul className="space-y-2 text-sm">
+            <ul className="space-y-1">
               {held.map((h) => (
-                <li key={h.summary.id}>
-                  <strong>L{h.level}:</strong> {h.summary.counts.reports} reports, {h.summary.counts.symptomatic} with symptoms —{' '}
-                  <span className="text-warn">{h.why}</span>{' '}
-                  <span className="text-hollow-500">Not counted unless a warden on L{h.level} confirms.</span>
+                <li key={h.summary.id} className="flex items-center justify-between gap-2">
+                  <StateTag state="danger">
+                    L{h.level} · {h.summary.counts.reports} reports · held, not counted
+                  </StateTag>
+                  <Explain label={`Why L${h.level} held`}>{h.why} Not counted unless a warden on L{h.level} confirms.</Explain>
                 </li>
               ))}
             </ul>
           )}
         </Card>
       </div>
-    </div>
-  )
-}
-
-function Stat({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
-  return (
-    <div className="rounded-2xl border border-hollow-700 bg-hollow-900 p-3">
-      <div className="font-mono text-[11px] tracking-wider text-hollow-500 uppercase">{label}</div>
-      <div className={`font-display text-2xl font-bold ${danger && value !== '0' ? 'text-danger' : 'text-data'}`}>{value}</div>
     </div>
   )
 }

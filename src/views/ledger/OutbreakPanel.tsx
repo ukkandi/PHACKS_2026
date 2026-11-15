@@ -1,10 +1,8 @@
-import { Badge, Card } from '../../components/ui'
+import { Card, Explain, StateTag, Trust } from '../../components/ui'
 import type { LedgerView } from '../../lib/ledger'
 import type { DirectorateBulletin } from '../../sim/directorate'
-import { ConfidenceBadge } from './bits'
 
 const pct = (v: number) => `${(v * 100).toFixed(1)}%`
-const people = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : `${Math.round(n / 1000)}k`)
 
 export function OutbreakPanel({ view, bulletin }: { view: LedgerView; bulletin: DirectorateBulletin | null }) {
   const flagged = view.levels
@@ -12,56 +10,54 @@ export function OutbreakPanel({ view, bulletin }: { view: LedgerView; bulletin: 
     .sort((a, b) => b.outbreak.z - a.outbreak.z)
 
   return (
-    <Card title="Outbreak watch" right={<span className="text-xs text-hollow-500">symptom check-ins vs normal, last 12h</span>}>
+    <Card
+      title="Outbreak watch"
+      help="Share of each level's recent check-ins reporting fever, cough, breathing or stomach trouble, tested against that level's own normal rate. OUTBREAK = far beyond chance. OFFICIAL = the Directorate's published figure for the same level."
+    >
       {flagged.length === 0 ? (
-        <p className="text-sm text-hollow-300">No level is reporting symptoms above its normal rate.</p>
+        <StateTag state="normal">No outbreak</StateTag>
       ) : (
-        <ul className="space-y-3">
+        <ul className="divide-y-2 divide-hollow-800">
           {flagged.map((l) => {
             const official = bulletin?.levels[l.level - 1]
-            const pop = l.conditions?.population ?? 0
             const verified = l.verifications.find((v) => v.claim === 'outbreak')
+            const ratio = official ? l.outbreak.rate / Math.max(official.symptomRate, 0.001) : 0
+            const danger = l.outbreak.status === 'outbreak'
             return (
-              <li
-                key={l.level}
-                className={`rounded-lg border p-3 ${l.outbreak.status === 'outbreak' ? 'border-danger/60 bg-danger/5' : 'border-warn/50'}`}
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <strong className="text-lg">Level {l.level}</strong>
-                  <Badge tone={l.outbreak.status === 'outbreak' ? 'danger' : 'warn'}>
-                    {l.outbreak.status === 'outbreak' ? 'OUTBREAK' : 'watch'}
-                  </Badge>
-                  <ConfidenceBadge c={l.confidence} />
-                  {verified && (
-                    <Badge tone={verified.confirmed ? 'ok' : 'warn'}>
-                      {verified.confirmed ? '✓ confirmed' : '✗ disputed'} by warden {verified.badge}
-                    </Badge>
-                  )}
+              <li key={l.level} className="py-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <StateTag state={danger ? 'danger' : 'watch'} className="text-sm">
+                    Level {l.level} · {danger ? 'outbreak' : 'watch'}
+                  </StateTag>
+                  <span className="flex items-center gap-2">
+                    {verified && (
+                      <StateTag state={verified.confirmed ? 'normal' : 'watch'}>
+                        {verified.confirmed ? '✓ confirmed' : '✗ disputed'} by warden {verified.badge}
+                      </StateTag>
+                    )}
+                    <Explain label={`Why level ${l.level}`}>{l.outbreak.reason}</Explain>
+                  </span>
                 </div>
-                <div className="mt-2 grid grid-cols-2 gap-3">
+                <div className="mt-1 grid grid-cols-3 gap-2 font-mono uppercase">
                   <div>
-                    <div className="font-mono text-[11px] tracking-wider text-data uppercase">Lantern · community</div>
-                    <div className="font-display text-4xl font-bold text-data">{pct(l.outbreak.rate)}</div>
-                    <div className="text-xs text-hollow-300">
-                      with symptoms · based on <strong>{l.reports}</strong> reports
-                      {pop > 0 && <> · ≈{people(l.outbreak.rate * pop)} people</>}
-                    </div>
+                    <div className="text-[10px] tracking-[0.15em] text-data">Lantern</div>
+                    <div className="text-2xl font-bold text-data">{pct(l.outbreak.rate)}</div>
                   </div>
                   <div>
-                    <div className="font-mono text-[11px] tracking-wider text-hollow-500 uppercase">Directorate official</div>
-                    <div className="font-display text-4xl font-bold text-hollow-500">{official ? pct(official.symptomRate) : '—'}</div>
-                    <div className="text-xs text-hollow-300">
-                      published figure{official && pop > 0 && <> · ≈{people(official.symptomRate * pop)} people</>}
+                    <div className="text-[10px] tracking-[0.15em] text-hollow-500">Official</div>
+                    <div className="text-2xl font-bold text-hollow-500">{official ? pct(official.symptomRate) : '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] tracking-[0.15em] text-hollow-500">Gap</div>
+                    <div className={`text-2xl font-bold ${ratio >= 1.5 ? 'text-warn' : 'text-hollow-300'}`}>
+                      {official ? `${ratio.toFixed(1)}× lower` : '—'}
                     </div>
                   </div>
                 </div>
-                <p className="mt-2 text-sm text-hollow-300">{l.outbreak.reason}</p>
-                {official && l.outbreak.rate > official.symptomRate * 1.5 && (
-                  <p className="mt-1 text-sm text-warn">
-                    The official figure is {(l.outbreak.rate / Math.max(official.symptomRate, 0.001)).toFixed(1)}× lower than
-                    what residents are reporting.
-                  </p>
-                )}
+                <div className="mt-1 flex flex-wrap gap-x-4">
+                  <Trust>Based on {l.reports} reports</Trust>
+                  <Trust tone={l.confidence === 'high' ? 'ok' : 'warn'}>{l.confidence} confidence</Trust>
+                </div>
               </li>
             )
           })}

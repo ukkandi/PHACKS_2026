@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Shell } from '../../components/Shell'
+import { Sign } from '../../components/ui'
 import { getDeviceId } from '../../lib/device'
 import { LedgerBody } from './LedgerBody'
 
@@ -9,11 +10,10 @@ export function LedgerView() {
   }, [])
   return (
     <Shell view="public ledger">
-      <h1 className="mb-1 text-2xl font-bold">Public Ledger</h1>
-      <p className="mb-4 max-w-3xl text-hollow-300">
-        What residents of the Hollow are actually reporting, level by level — next to what the Directorate says.
-      </p>
-      <LedgerBody nodeId={`ledger-${getDeviceId()}`} />
+      <div className="space-y-3">
+        <Sign sub="What residents report · next to the official figures">Public ledger · all levels</Sign>
+        <LedgerBody nodeId={`ledger-${getDeviceId()}`} />
+      </div>
     </Shell>
   )
 }

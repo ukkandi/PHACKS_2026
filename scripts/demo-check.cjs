@@ -61,16 +61,16 @@ const has = (text, needle) => text.toLowerCase().includes(needle.toLowerCase())
   await step(8)
   await ledger.waitForTimeout(800)
   const ob = await txt(ledger.locator('section', { hasText: 'Outbreak watch' }).first())
-  const m = ob.match(/Level 38 OUTBREAK.*?LANTERN · COMMUNITY ([\d.]+)%.*?based on (\d+) reports.*?DIRECTORATE OFFICIAL ([\d.]+)%/i)
-  check('Step 5: L38 outbreak flagged next to the lower official figure', !!m && +m[1] > 2 * +m[3], m ? `Lantern ${m[1]}% (${m[2]} reports) vs official ${m[3]}%` : ob.slice(0, 120))
+  const m = ob.match(/Level 38 · OUTBREAK.*?LANTERN ([\d.]+)%.*?OFFICIAL ([\d.]+)%.*?based on (\d+) reports/i)
+  check('Step 5: L38 outbreak flagged next to the lower official figure', !!m && +m[1] > 2 * +m[2], m ? `Lantern ${m[1]}% (${m[3]} reports) vs official ${m[2]}%` : ob.slice(0, 120))
 
   // Step 6: allocation vs Directorate
   const al = await txt(ledger.locator('section', { hasText: 'Power reserve' }).first())
-  check('Step 6: Lantern recommends L38 air pumps first', /Lantern recommends [\d.]+ MW → Level 38 air pumps/.test(al))
-  check('Step 6: Directorate sends reserve to Levels 1–3', /Directorate actually did.*Levels 1–3 administrative/.test(al))
+  check('Step 6: Lantern recommends L38 air pumps first', /Lantern recommends [\d.]+ MW → Level 38 air pumps/i.test(al))
+  check('Step 6: Directorate sends reserve to Levels 1–3', /Directorate did.*Levels 1–3 administrative/i.test(al))
   await sim.getByRole('button', { name: 'Directorate powers L38 air pumps' }).click()
   await ledger.waitForTimeout(500)
-  check('Step 6b: after the reroute, the ledger shows it', (await txt(ledger.locator('section', { hasText: 'Power reserve' }).first())).includes('Level 38 air pumps (emergency line)'))
+  check('Step 6b: after the reroute, the ledger shows it', has(await txt(ledger.locator('section', { hasText: 'Power reserve' }).first()), 'Level 38 air pumps (emergency line)'))
 
   // Step 7: terminal + warden
   await terminal.bringToFront(); await terminal.waitForTimeout(200)
@@ -93,21 +93,21 @@ const has = (text, needle) => text.toLowerCase().includes(needle.toLowerCase())
   check('Step 7: warden checks in Mr. Brandt', (await txt(warden.locator('li', { hasText: 'Mr. Brandt' }))).includes('via warden'))
   await warden.getByRole('button', { name: 'Confirm outbreak' }).click()
   await ledger.waitForTimeout(800)
-  check('Step 7: ledger shows warden confirmation', /Level 38 OUTBREAK.*confirmed by warden W-38/i.test(await txt(ledger.locator('section', { hasText: 'Outbreak watch' }).first())))
+  check('Step 7: ledger shows warden confirmation', /Level 38 · OUTBREAK.*confirmed by warden W-38/i.test(await txt(ledger.locator('section', { hasText: 'Outbreak watch' }).first())))
   await ledger.getByRole('button', { name: 'L38', exact: true }).click()
   const det = await txt(ledger.locator('tr', { hasText: 'Sources' }))
-  check('Step 7: L38 counts include terminal + warden reports', /via terminal/.test(det) && /via warden/.test(det), (det.match(/Sources:[^.]*/) || [''])[0])
+  check('Step 7: L38 counts include terminal + warden reports', /via terminal/i.test(det) && /via warden/i.test(det), (det.match(/Sources:[^.]*/i) || [''])[0])
 
   // Step 8: trust
   await sim.selectOption('select', '5')
   await sim.getByRole('button', { name: /inject 300 fake/ }).click()
   await ledger.waitForTimeout(800)
-  check('Step 8: fake reports are held back', /L5: 300 reports.*Not counted/.test(await txt(ledger.locator('section', { hasText: 'Held back' }))))
+  check('Step 8: fake reports are held back', /L5 · 300 reports · held, not counted/i.test(await txt(ledger.locator('section', { hasText: 'Held back' }))))
 
   // Step 9: directorate view
   const dir = await open('/directorate', 'directorate')
   await dir.waitForTimeout(800)
-  check('Step 9: Directorate view is read-only and shows the same outbreak', /read-only/.test(await txt(dir.locator('main'))) && /Level 38 OUTBREAK/.test(await txt(dir.locator('main'))))
+  check('Step 9: Directorate view is read-only and shows the same outbreak', /read-only/i.test(await txt(dir.locator('main'))) && /Level 38 · OUTBREAK/i.test(await txt(dir.locator('main'))))
 
   check('No page errors', errs.length === 0, errs.slice(0, 3).join(' / '))
   console.log(fails ? `\n${fails} FAILED` : '\nALL PASS')
