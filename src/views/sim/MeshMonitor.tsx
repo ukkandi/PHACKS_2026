@@ -38,7 +38,11 @@ export function MeshMonitor() {
                 ? `summary · L${b.level} · ${b.counts.reports} reports (${b.source})`
                 : b.kind === 'verify'
                   ? `warden ${b.badge} ${b.confirmed ? 'confirms' : 'disputes'} ${b.claim} on L${b.level}`
-                  : `sealed · encrypted · tag ${b.tag}`,
+                  : b.kind === 'sync-req'
+                    ? 'catch-up request from a device that just joined'
+                    : b.kind === 'sync'
+                      ? `catch-up reply (${b.from}): ${b.summaries?.length ?? 0} reports, ${b.alerts?.length ?? 0} alerts`
+                      : `sealed · encrypted · tag ${b.tag}`,
           originLevel: packet.path[0].level,
           firstSeen: Date.now(),
           frames: 0,

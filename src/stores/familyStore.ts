@@ -99,6 +99,17 @@ export const useFamily = create<FamilyState>((set, get) => ({
         set({ alerts: { ...get().alerts, [body.level]: { ...body, route: p.path, receivedAt: Date.now() } } })
         return
       }
+      if (body.kind === 'sync' && body.alerts) {
+        // Catch-up: alerts that were raised before this device joined.
+        const next = { ...get().alerts }
+        for (const a of body.alerts) {
+          if (a.level === c.profile.level) continue
+          const cur = next[a.level]
+          if (!cur || a.tick > cur.tick) next[a.level] = { ...a, route: p.path, receivedAt: Date.now() }
+        }
+        set({ alerts: next })
+        return
+      }
       if (body.kind !== 'sealed') return
       if (body.tag !== c.key.tag) return // someone else's family: opaque to us, but we still relayed it
       const msg = await openJson<FamilyPayload>(c.key, body.iv, body.data)
@@ -174,6 +185,7 @@ export const useFamily = create<FamilyState>((set, get) => ({
     c.cleanup.push(() => clearInterval(hb), () => clearInterval(prune))
 
     set({ running: true })
+    node.send({ kind: 'sync-req', requestId: `sync-${deviceId}-${Date.now().toString(36)}`, want: ['alerts'] })
     await sendFamily(c, { type: 'hello', memberId: profile.memberId })
     await get().sendStatus()
   },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { anomalyReason, buildLedger, type StoredSummary } from './ledger'
+import { anomalyReason, buildLedger, mergeAlerts, mergeSummaries, type StoredSummary } from './ledger'
 import { ZERO_COUNTS, type ReportCounts } from './reports'
 
 let seq = 0
@@ -37,5 +37,25 @@ describe('buildLedger', () => {
   it('a personal check-in counting many reports is anomalous', () => {
     expect(anomalyReason({ ...batch(5, 99, 5, 0), source: 'resident' })).toBeTruthy()
     expect(anomalyReason({ ...batch(5, 99, 1, 0), source: 'resident' })).toBeNull()
+  })
+})
+
+describe('catch-up merging', () => {
+  it('is order-independent and ignores duplicates', () => {
+    const a = batch(5, 10, 20, 1)
+    const b = batch(6, 11, 20, 1)
+    const one = mergeSummaries(mergeSummaries([], [a], 12, 0), [b, a], 12, 0)
+    const two = mergeSummaries(mergeSummaries([], [b], 12, 0), [a, b], 12, 0)
+    expect(one.map((s) => s.id).sort()).toEqual(two.map((s) => s.id).sort())
+    expect(one).toHaveLength(2)
+  })
+  it('drops reports outside the window or from a reset world', () => {
+    expect(mergeSummaries([], [batch(5, 1, 20, 1), batch(5, 50, 20, 1)], 100, 0)).toHaveLength(1) // tick 1 too old
+    expect(mergeSummaries([], [batch(5, 120, 20, 1)], 100, 0)).toHaveLength(0) // future tick
+  })
+  it('keeps the newest alert per level', () => {
+    const base = { kind: 'alert' as const, level: 38, riskPct: 0, hoursToFailure: null, hoursRange: null, confidence: 'low' as const, reason: '' }
+    const m = mergeAlerts({}, [{ ...base, band: 'blackout', tick: 20 }, { ...base, band: 'warning', tick: 10 }], 0)
+    expect(m[38].band).toBe('blackout')
   })
 })

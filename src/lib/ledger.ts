@@ -57,6 +57,43 @@ export interface LedgerView {
   levelsReporting: number
 }
 
+/**
+ * Merge incoming summaries into a ledger copy: skip ids we already hold, keep only the rolling
+ * window, and drop anything from a future tick (the world was reset). Pure; order-independent.
+ */
+export function mergeSummaries(
+  existing: StoredSummary[],
+  incoming: (SummaryBody & { id: string; hops?: number })[],
+  tick: number,
+  now: number,
+): StoredSummary[] {
+  const have = new Set(existing.map((s) => s.id))
+  const added: StoredSummary[] = []
+  for (const s of incoming) {
+    if (have.has(s.id)) continue
+    have.add(s.id)
+    added.push({ ...s, receivedAt: now, hops: s.hops ?? 0 })
+  }
+  if (!added.length) return existing
+  return [...existing, ...added].filter((s) => s.tick <= tick && tick - s.tick < BASELINE_FROM)
+}
+
+/** Keep the newest alert per level (by tick). */
+export function mergeAlerts(existing: Record<number, StoredAlert>, incoming: AlertBody[], now: number): Record<number, StoredAlert> {
+  const out = { ...existing }
+  for (const a of incoming) {
+    const cur = out[a.level]
+    if (!cur || a.tick >= cur.tick) out[a.level] = { ...a, receivedAt: now }
+  }
+  return out
+}
+
+export function mergeVerifies(existing: StoredVerify[], incoming: (VerifyBody & { id: string })[], now: number): StoredVerify[] {
+  const have = new Set(existing.map((v) => v.id))
+  const added = incoming.filter((v) => !have.has(v.id)).map((v) => ({ ...v, receivedAt: now }))
+  return added.length ? [...existing, ...added].slice(-200) : existing
+}
+
 /** Why a summary looks wrong, or null if it looks fine. */
 export function anomalyReason(s: SummaryBody): string | null {
   if (!countsAreConsistent(s.counts)) return 'Counts are internally inconsistent.'

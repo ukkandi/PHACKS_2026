@@ -96,7 +96,29 @@ export interface VerifyBody {
   note?: string
 }
 
-export type MeshBody = SealedBody | AlertBody | SummaryBody | VerifyBody
+/**
+ * Catch-up: a device that just joined asks the mesh for what it missed. Any ledger copy or level
+ * phone that hears it answers with a SyncBody. Items keep their original packet ids, so
+ * receivers simply ignore anything they already hold — order of arrival doesn't matter.
+ */
+export interface SyncRequestBody {
+  kind: 'sync-req'
+  requestId: string
+  want: SyncWant[]
+}
+
+export type SyncWant = 'summaries' | 'alerts' | 'verifies'
+
+export interface SyncBody {
+  kind: 'sync'
+  requestId: string
+  from: 'ledger-copy' | 'level-phones'
+  summaries?: (SummaryBody & { id: string })[]
+  alerts?: AlertBody[]
+  verifies?: (VerifyBody & { id: string })[]
+}
+
+export type MeshBody = SealedBody | AlertBody | SummaryBody | VerifyBody | SyncRequestBody | SyncBody
 
 export interface Packet {
   id: string
@@ -159,6 +181,7 @@ export class MeshNode {
   private lastBeacon = 0
   private beaconTimer: ReturnType<typeof setInterval>
   relayEnabled: boolean
+  private closed = false
   /** Frames this node has rebroadcast for others (shown on warden devices). */
   relayed = 0
 
@@ -171,11 +194,17 @@ export class MeshNode {
     queueMicrotask(() => this.maybeBeacon())
   }
 
+  /** Post a frame unless this node has been shut down (late timers are harmless). */
+  private post(frame: Frame) {
+    if (!this.closed) this.channel.postMessage(frame)
+  }
+
   private maybeBeacon() {
+    if (this.closed) return
     const me = this.info
     if (me.netUp || Date.now() - this.lastBeacon < BEACON_MS) return
     this.lastBeacon = Date.now()
-    this.channel.postMessage({ sender: me } satisfies Frame)
+    this.post({ sender: me })
   }
 
   private hasOfflineNeighbour(me: NodeInfo): boolean {
@@ -206,7 +235,7 @@ export class MeshNode {
       body,
     }
     this.markSeen(packet.id)
-    this.channel.postMessage({ packet, sender: me } satisfies Frame)
+    this.post({ packet, sender: me })
     return packet
   }
 
@@ -235,13 +264,14 @@ export class MeshNode {
         this.timers.delete(t)
         this.relayed++
         // Re-read our info: the network state may have changed in the meantime.
-        this.channel.postMessage({ packet: arrived, sender: this.info } satisfies Frame)
+        this.post({ packet: arrived, sender: this.info })
       }, RELAY_DELAY_MS)
       this.timers.add(t)
     }
   }
 
   close() {
+    this.closed = true
     clearInterval(this.beaconTimer)
     for (const t of this.timers) clearTimeout(t)
     this.channel.close()
