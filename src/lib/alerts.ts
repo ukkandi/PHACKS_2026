@@ -48,7 +48,7 @@ export const ADVICE: Record<Exclude<AlertBand, 'clear'>, string[]> = {
   ],
   blackout: [
     'Stay low and still: it gets hot fast without cooling.',
-    'Lantern keeps working: messages hop through nearby devices.',
+    "Lantern keeps working: messages are passed along by neighbors' phones.",
     'Ration lamp battery. Head to the air station if breathing gets hard.',
   ],
 }

@@ -83,8 +83,8 @@ function Warden({ level }: { level: number }) {
       view={`warden · L${level}`}
       aside={
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          <Trust tone={net ? 'ok' : 'warn'}>{net ? 'Net + mesh' : 'Mesh only'}</Trust>
-          <Trust>Relayed {relayed}</Trust>
+          <Trust tone={net ? 'ok' : 'warn'}>{net ? 'Network: normal' : "Network down · through neighbors' phones"}</Trust>
+          <Trust>Passed along {relayed} for others</Trust>
           {world && <span className="font-mono text-xs text-lamp">{tickLabel(world.tick)}</span>}
         </div>
       }
@@ -99,7 +99,7 @@ function Warden({ level }: { level: number }) {
           <Explain label="How warden activation works">
             This device made its own keypair; the private key never leaves it. It becomes an active warden once{' '}
             {VOUCHES_REQUIRED} residents of Level {level} vouch for its public key from their own devices (in person: they
-            check the key shown here). Every confirmation and check-in it sends is signed; the ledger and residents ignore
+            check the key shown here). Every confirmation and check-in it sends is signed; the public board and residents ignore
             anything unsigned or from a key that isn't vouched. Care notes are encrypted to vouched wardens' keys only.
           </Explain>
         </div>
@@ -107,12 +107,12 @@ function Warden({ level }: { level: number }) {
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-2 border-hollow-700 bg-hollow-900 px-3 py-2">
           <StateTag state="danger" className="text-base">{urgent} need help</StateTag>
           <StateTag state="watch" className="text-base">{watch} to check</StateTag>
-          <Trust>Care notes encrypted to this key</Trust>
+          <Trust>Notes for you: only you can read</Trust>
         </div>
         <div className="grid gap-3 lg:grid-cols-[3fr_2fr]">
           <Card
             title="Visit first"
-            help="Ranked by: asked for help, breathing trouble, fever, very low mood, vulnerable (elderly, oxygen, children), and nobody checking in for a day. Notes come sealed from terminals and phones on your block; only warden devices can read them."
+            help="Ranked by: asked for help, breathing trouble, fever, very low mood, vulnerable (elderly, oxygen, children), and nobody checking in for a day. Notes come privately from terminals and phones on your block; only trusted warden phones can read them."
           >
             {!running && <p className="font-mono text-xs uppercase">Opening…</p>}
             <ul className="divide-y-2 divide-hollow-800">
@@ -188,8 +188,8 @@ function VerifyCard({ level }: { level: number }) {
   const me = useMyStatus()
   return (
     <Card
-      title={`Verify ledger · L${level}`}
-      help="What the public ledger shows for your block. Vouch for it — or dispute it — from what you see on your rounds. The ledger shows your warden badge next to the figure."
+      title={`Check public board · L${level}`}
+      help="What the public board shows for your block. Vouch for it — or dispute it — from what you see on your rounds. The public board shows your warden badge next to the figure."
     >
       <ul className="space-y-3">
         <li>
@@ -361,7 +361,7 @@ function LockedWarden({
           </ol>
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
             <Trust>Rounds sent only to active wardens</Trust>
-            <Trust>Encrypted to warden keys</Trust>
+            <Trust>Locked to warden keys</Trust>
           </div>
         </section>
       </div>

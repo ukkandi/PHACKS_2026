@@ -52,11 +52,14 @@ const has = (text, needle) => text.toLowerCase().includes(needle.toLowerCase())
   const fam = await txt(res.Ilan.locator('section', { hasText: 'Family · ORIN-7' }))
   check('Step 2: Ilan sees Mara and Teo okay', /Mara .*Okay today/i.test(fam) && /Teo .*Okay today/i.test(fam))
 
+  // Ilan turns spoken alerts on (Mara's phone will switch them on by itself in blackout mode).
+  await res.Ilan.getByRole('button', { name: /Spoken alerts: off/ }).click()
+
   // Step 3: surge → warning hours ahead
   await sim.getByRole('button', { name: 'Power surge' }).click()
   let warnedAt = 0
-  for (let h = 1; h <= 10 && !warnedAt; h++) { await step(1); if (await res.Mara.locator('[role=alert]').count()) warnedAt = h }
-  const banner = warnedAt ? await txt(res.Mara.locator('[role=alert]')) : ''
+  for (let h = 1; h <= 10 && !warnedAt; h++) { await step(1); if (await res.Mara.getByTestId('power-warning').count()) warnedAt = h }
+  const banner = warnedAt ? await txt(res.Mara.getByTestId('power-warning')) : ''
   check('Step 3: Mara gets a blackout warning with a time window', /Blackout risk · \d+–\d+ hours/i.test(banner), banner.slice(0, 90))
   check('Step 3: warning shows a confidence label', /(low|medium|high) confidence/i.test(banner))
   await res.Ilan.waitForTimeout(600)
@@ -68,11 +71,17 @@ const has = (text, needle) => text.toLowerCase().includes(needle.toLowerCase())
   check('Step 4: blackout hits after the warning', hoursToTrip > 0, `${hoursToTrip}h after warning`)
   check('Step 4: Mara is in blackout mode', (await res.Mara.locator('.blackout-mode').count()) === 1)
   await res.Mara.waitForTimeout(500)
-  check('Step 4: Mara is mesh-only', has(await txt(res.Mara.locator('header').first()), 'Mesh only'))
+  check("Step 4: Mara's top bar says the network is down, still working through neighbors' phones", has(await txt(res.Mara.locator('header').first()), "through neighbors' phones"))
+  const spokenMara = await res.Mara.evaluate(() => window.__lanternSpoken ?? [])
+  check('Step 4: blackout start is spoken aloud on Mara\'s phone (on by default in blackout)', spokenMara.some((t) => t.startsWith('The power is out on Level 38')), spokenMara.slice(-1)[0])
+  check('Step 4: the same alert is shown as a caption', has(await txt(res.Mara.getByTestId('alert-caption')), 'power is out on Level 38'))
+  check('Step 4: voice is the default control in blackout mode', (await res.Mara.getByRole('button', { name: /Hold to speak/ }).count()) === 1)
   await res.Mara.getByRole('button', { name: 'Power out', exact: true }).click()
   await res.Ilan.waitForTimeout(1500)
   const msgs = await txt(res.Ilan.locator('section', { hasText: 'Family messages' }))
-  check('Step 4: message reaches Ilan via a radio hop', /Power is out here\..*L38 ⇢radio L3[67]/i.test(msgs), (msgs.match(/\d+ hops?: [^|]*?L12/) || [''])[0])
+  check("Step 4: message reaches Ilan, passed along by a neighbor's phone", /Power is out here\..*passed along by 1 phone · L38 → L3[67] → L12/i.test(msgs), (msgs.match(/passed along[^|]*?L12/i) || [''])[0])
+  const spokenIlan = await res.Ilan.evaluate(() => window.__lanternSpoken ?? [])
+  check('Step 4: Ilan (spoken alerts on) hears the message read aloud', spokenIlan.includes('Message from Mara. Power is out here.'), spokenIlan.slice(-1)[0])
 
   // Step 5: outbreak vs official
   await sim.getByRole('button', { name: /Symptom spike/ }).click()
@@ -133,6 +142,37 @@ const has = (text, needle) => text.toLowerCase().includes(needle.toLowerCase())
   const dir = await open('/directorate', 'directorate')
   await dir.waitForTimeout(800)
   check('Step 9: Directorate view is read-only and shows the same outbreak', /read-only/i.test(await txt(dir.locator('main'))) && /Level 38 · OUTBREAK/i.test(await txt(dir.locator('main'))))
+
+  // Step 10: voice check-in (speech recognition simulated) and the no-voice fallback.
+  const voiceCtx = await b.newContext({ viewport: { width: 900, height: 1000 } })
+  const vp = await voiceCtx.newPage()
+  vp.on('pageerror', (e) => errs.push('voice: ' + e))
+  await vp.addInitScript(() => {
+    window.__lanternFakeVoice = { transcript: 'I need help' }
+  })
+  await vp.goto(URL + '/resident?device=voicetest')
+  await vp.getByLabel('Name').fill('Rae')
+  await vp.getByRole('button', { name: 'Start' }).click()
+  const hold = vp.getByRole('button', { name: /Hold to speak/ })
+  await hold.hover()
+  await vp.mouse.down()
+  await vp.waitForTimeout(200)
+  await vp.mouse.up()
+  await vp.waitForTimeout(300)
+  const heard = await txt(vp.getByRole('region', { name: 'Voice check-in' }))
+  check('Step 10: voice shows what it heard and what it will do', /Heard “I need help”.*I need help/i.test(heard), heard.slice(0, 80))
+  check('Step 10: nothing is sent before CONFIRM', !has(await txt(vp.locator('main')), 'Help requested'))
+  await vp.getByRole('button', { name: /Confirm · send/ }).click()
+  await vp.waitForTimeout(400)
+  check('Step 10: after CONFIRM the help request is recorded', has(await txt(vp.locator('main')), 'Help requested'))
+  const np = await voiceCtx.newPage()
+  await np.addInitScript(() => {
+    for (const k of ['SpeechRecognition', 'webkitSpeechRecognition']) Object.defineProperty(window, k, { value: undefined, configurable: true })
+  })
+  await np.goto(URL + '/resident?device=novoice&as=ilan')
+  await np.waitForTimeout(800)
+  check('Step 10: without speech recognition, a clear fallback to the buttons', has(await txt(np.locator('main')), 'Voice not available here · use the buttons') && (await np.getByRole('button', { name: "I'm okay", exact: true }).count()) === 1)
+  await voiceCtx.close()
 
   check('No page errors', errs.length === 0, errs.slice(0, 3).join(' / '))
   console.log(fails ? `\n${fails} FAILED` : '\nALL PASS')

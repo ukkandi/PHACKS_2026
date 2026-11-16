@@ -1,5 +1,5 @@
 import { Card, StateTag, Trust } from '../../components/ui'
-import { hopCount } from '../../lib/mesh'
+import { passedAlong } from '../../lib/mesh'
 import { ago } from '../../lib/status'
 import { useFamily } from '../../stores/familyStore'
 import { formatHoursRange } from '../../sim/predict'
@@ -16,7 +16,7 @@ export function MeshAlertsCard() {
   return (
     <Card
       title="Other levels"
-      help="Blackout alerts raised by phones on other levels, passed along the mesh. Family levels are listed first."
+      help="Blackout alerts raised by phones on other levels, passed along from phone to phone. Levels where your family lives are listed first."
     >
       {active.length === 0 ? (
         <StateTag state="normal">No alerts heard</StateTag>
@@ -31,7 +31,7 @@ export function MeshAlertsCard() {
                 {familyLevels.has(a.level) && <span className="font-mono text-sm text-lamp uppercase">family here</span>}
               </div>
               <Trust>
-                Heard {ago(a.receivedAt)} · via {hopCount(a.route)} hops{a.band !== 'blackout' ? ` · ${a.confidence} conf.` : ''}
+                Heard {ago(a.receivedAt)} · {passedAlong(a.route)}{a.band !== 'blackout' ? ` · ${a.confidence} confidence` : ''}
               </Trust>
             </li>
           ))}

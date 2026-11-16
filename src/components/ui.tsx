@@ -56,7 +56,7 @@ export function Card({
           <h2 className="font-mono text-sm font-bold tracking-[0.12em] text-lamp uppercase">{title}</h2>
           <div className="flex items-center gap-2">
             {right}
-            {help && <Explain>{help}</Explain>}
+            {help && <Explain label={typeof title === 'string' ? `About ${title}` : 'Explain'}>{help}</Explain>}
           </div>
         </header>
       )}
@@ -101,7 +101,8 @@ const stateBorder: Record<State, string> = {
   danger: 'border-danger',
   nodata: 'border-hollow-700 border-dashed',
 }
-const stateGlyph: Record<State, string> = { normal: '■', watch: '■', danger: '▲', nodata: '○' }
+/** Never colour alone: every state also has its own shape (and a word next to it). */
+export const stateGlyph: Record<State, string> = { normal: '●', watch: '■', danger: '▲', nodata: '○' }
 
 /** "■ WATCH" — the one way a state is shown. */
 export function StateTag({ state, children, className = '' }: { state: State; children?: ReactNode; className?: string }) {
@@ -116,11 +117,18 @@ export function StateTag({ state, children, className = '' }: { state: State; ch
 /** Big status tile: LABEL / STATE / value. Danger gets hazard stripes. */
 export function StatusTile({ label, state, word, value }: { label: string; state: State; word?: string; value?: ReactNode }) {
   return (
-    <div className={`border-2 bg-hollow-900 ${stateBorder[state]}`}>
+    <div
+      role="group"
+      aria-label={`${label}: ${word ?? STATE_WORD[state]}${typeof value === 'string' ? `, ${value}` : ''}`}
+      className={`border-2 bg-hollow-900 ${stateBorder[state]}`}
+    >
       {state === 'danger' && <div className="hazard h-2" aria-hidden />}
       <div className="px-3 py-2">
         <div className="font-mono text-sm tracking-[0.15em] text-hollow-300 uppercase">{label}</div>
-        <div className={`font-mono text-xl font-bold tracking-wide uppercase ${stateText[state]}`}>{word ?? STATE_WORD[state]}</div>
+        <div className={`font-mono text-xl font-bold tracking-wide uppercase ${stateText[state]}`}>
+          <span aria-hidden>{stateGlyph[state]} </span>
+          {word ?? STATE_WORD[state]}
+        </div>
         {value !== undefined && <div className="font-mono text-xs tracking-wider text-hollow-300 uppercase">{value}</div>}
       </div>
     </div>
@@ -130,10 +138,11 @@ export function StatusTile({ label, state, word, value }: { label: string; state
 /** Small persistent trust indicator: "● STORED ON THIS DEVICE". */
 export function Trust({ children, tone = 'ok' }: { children: ReactNode; tone?: 'ok' | 'warn' | 'danger' | 'muted' }) {
   const color = { ok: 'text-ok', warn: 'text-warn', danger: 'text-danger', muted: 'text-hollow-500' }[tone]
+  const glyph = { ok: '●', warn: '■', danger: '▲', muted: '○' }[tone]
   return (
     <span className="inline-flex items-center gap-1.5 font-mono text-sm tracking-wider text-hollow-300 uppercase">
       <span className={color} aria-hidden>
-        ●
+        {glyph}
       </span>
       {children}
     </span>

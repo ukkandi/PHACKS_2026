@@ -176,7 +176,7 @@ export function CheckInFlow({ tick, onCheckedIn }: { tick: number; onCheckedIn?:
         </div>
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
           <Trust>Stored on this device</Trust>
-          <Trust>Ledger: counts only</Trust>
+          <Trust>Public board: counts only</Trust>
         </div>
       </section>
     )
@@ -209,11 +209,11 @@ export function CheckInFlow({ tick, onCheckedIn }: { tick: number; onCheckedIn?:
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           <Trust>Stored on this device</Trust>
-          <Trust>Ledger: counts only</Trust>
+          <Trust>Public board: counts only</Trust>
         </div>
         <Explain label="What happens to my check-in">
           Your answers stay on this phone. Your family sees only okay / need help (encrypted with your family code). The
-          public ledger receives anonymous counts for Level {profile.level} — no name, unit or device id. Asking for help
+          public board only gets anonymous counts for Level {profile.level} — no name, unit or device id. Asking for help
           also tells your block warden your unit number, so someone can come to you.
         </Explain>
       </div>

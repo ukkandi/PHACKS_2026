@@ -123,3 +123,19 @@ body {
   outline: 3px solid var(--color-lamp);
   outline-offset: 2px;
 }
+
+/* Vibration fallback: three quick flashes, then steady (static when motion is reduced). */
+@media (prefers-reduced-motion: no-preference) {
+  .lantern-pulse {
+    animation: lantern-pulse 0.4s ease-in-out 3;
+  }
+  @keyframes lantern-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.25;
+    }
+  }
+}

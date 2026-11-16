@@ -17,6 +17,12 @@ import { MessagesCard } from './MessagesCard'
 import { DEMO_FAMILY, PRESETS, Setup } from './Setup'
 import { WarningBanner } from './WarningBanner'
 import { WardensCard } from './WardensCard'
+import { AlertCaption, LiveRegions, VisualPulse } from '../../components/Announcer'
+import type { VoiceIntent } from '../../lib/voice'
+import { useAlertFeed } from '../../stores/alertFeed'
+import { AlertSettings } from './AlertSettings'
+import { useAnnouncements } from './useAnnouncements'
+import { VoiceCheckIn } from './VoiceCheckIn'
 
 export function ResidentView() {
   const { loaded, profile, load, deviceId, forgetDevice, db } = useResident()
@@ -57,6 +63,40 @@ export function ResidentView() {
   const tick = world?.tick ?? 0
   const blackout = !!(profile && world?.levels[profile.level - 1]?.blackout)
 
+  // Works in the dark: alerts are announced (screen reader, caption, speech, vibration/flash).
+  // Blackout mode must be known BEFORE the blackout announcement, so spoken alerts are already on.
+  const setBlackout = useAlertFeed((s) => s.setBlackout)
+  useEffect(() => setBlackout(blackout), [blackout, setBlackout])
+  useAnnouncements(profile?.level ?? null, world)
+
+  /** Voice commands do exactly what the buttons do. */
+  const onVoice = async (intent: VoiceIntent) => {
+    if (!profile) return
+    if (intent === 'okay' || intent === 'help') {
+      // Same as I'M OKAY / I NEED HELP → SEND NOW (default details).
+      const c = await useResident.getState().addCheckIn({
+        tick,
+        ts: Date.now(),
+        okay: intent === 'okay',
+        mood: 3,
+        sleepHours: 7,
+        symptoms: [],
+        water: 'ok',
+        level: profile.level,
+      })
+      void sendStatus()
+      void shareCheckIn(c)
+    } else {
+      await useFamily.getState().sendMessage(intent === 'power-out' ? 'Power is out here.' : 'Need water.')
+    }
+  }
+  const alertLayer = (
+    <>
+      <LiveRegions />
+      <VisualPulse />
+    </>
+  )
+
   const aside = (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
       {profile && <MeshStatus world={world} level={profile.level} />}
@@ -83,6 +123,7 @@ export function ResidentView() {
   if (blackout) {
     return (
       <Shell view="resident · blackout" aside={aside} className="blackout-mode">
+        {alertLayer}
         <div className="mx-auto max-w-2xl space-y-3">
           <section role="alert" className="border-2 border-danger">
             <div className="hazard h-3" aria-hidden />
@@ -90,7 +131,7 @@ export function ResidentView() {
               <div>
                 <h1 className="font-mono text-2xl font-bold tracking-[0.08em] text-danger uppercase">Blackout · Level {profile.level}</h1>
                 <div className="font-mono text-xs tracking-wider uppercase">
-                  Sector {sectorOf(profile.unit)} · {profile.name} · mesh running
+                  Sector {sectorOf(profile.unit)} · {profile.name} · still connected through neighbors' phones
                 </div>
               </div>
               <Explain label="What to do">
@@ -102,9 +143,12 @@ export function ResidentView() {
               </Explain>
             </div>
           </section>
+          <AlertCaption />
+          <VoiceCheckIn big onIntent={onVoice} />
           <LevelStatus world={world} level={profile.level} compact />
           <FamilyPanel tick={tick} />
           <MessagesCard />
+          <AlertSettings />
         </div>
       </Shell>
     )
@@ -112,8 +156,10 @@ export function ResidentView() {
 
   return (
     <Shell view="resident" aside={aside}>
+      {alertLayer}
       <div className="mx-auto max-w-2xl space-y-3">
         {sign}
+        <AlertCaption />
         <WarningBanner world={world} level={profile.level} />
         <LevelStatus world={world} level={profile.level} />
         <CheckInFlow
@@ -123,6 +169,8 @@ export function ResidentView() {
             void shareCheckIn(c)
           }}
         />
+        <VoiceCheckIn onIntent={onVoice} />
+        <AlertSettings />
         <FamilyPanel tick={tick} />
         <MessagesCard />
         <WardensCard level={profile.level} />

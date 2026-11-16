@@ -17,9 +17,9 @@ const TABS = [
 
 const STEPS = [
   'Warden tab: ACTIVE · VOUCHED BY 3 OF L38 (Mara + 2 level-phone residents; Teo is L36, not counted).',
-  "Mara, Teo, Ilan: I'M OKAY → SEND NOW. Ilan's family list: all OKAY.",
+  "Mara, Teo, Ilan: I'M OKAY → SEND NOW (or HOLD TO SPEAK). Ilan: Spoken alerts → ON. Ilan's family list: all OKAY.",
   'Simulator: Power surge, Step +1h ×4 → Mara: BLACKOUT RISK with hours + confidence; Ilan: L38 RISK.',
-  'Step +1h ×9 → Mara switches to blackout mode. Mara: POWER OUT HERE → Ilan gets it via L38 ⇢radio L36 ⇢net L12.',
+  'Step +1h ×9 → Mara: blackout mode, flashes and SPEAKS the alert. Mara: POWER OUT (or hold to speak "power out" → CONFIRM) → Ilan gets it passed along by 1 phone and hears it read aloud.',
   'Simulator: Symptom spike, Step +1h ×8 → ledger: L38 OUTBREAK vs lower OFFICIAL figure.',
   'Ledger: Power reserve — Lantern: L38 AIR PUMPS; Directorate: most to L1–3. Priorities voted by 40 levels.',
   'Terminal: 2 2 1 → NEXT → I NEED HELP → LOW → UNDER 5 H → BREATHING → NEXT → YES. Warden: Mrs. Okafor first; CHECK IN Mr. Brandt → SEND; CONFIRM OUTBREAK.',

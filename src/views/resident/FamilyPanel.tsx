@@ -1,6 +1,6 @@
 import { Card, StateTag, Trust } from '../../components/ui'
 import type { FamilyMember } from '../../lib/db'
-import { describeRoute, hopCount } from '../../lib/mesh'
+import { describeRoute, passedAlong, plainRoute } from '../../lib/mesh'
 import { ago, type State } from '../../lib/status'
 import { useFamily } from '../../stores/familyStore'
 import { useResident } from '../../stores/residentStore'
@@ -27,8 +27,8 @@ export function FamilyPanel({ tick }: { tick: number }) {
   return (
     <Card
       title={`Family · ${profile.familyCode}`}
-      right={<Trust>Encrypted</Trust>}
-      help="Family status travels over the mesh, encrypted with your family code. Relays — neighbours' phones, wardens, the Directorate — can't read it. 'Heard … via N hops' shows when and how each update reached you."
+      right={<Trust>Only family can read</Trust>}
+      help="Family updates travel from phone to phone, locked with your family code. The phones that pass them along — neighbors, wardens, the Directorate — can't read them. 'Heard … passed along by N phones' shows when and how each update reached you."
     >
       <ul className="divide-y-2 divide-hollow-800">
         <li className="flex items-center justify-between gap-2 py-2">
@@ -41,7 +41,6 @@ export function FamilyPanel({ tick }: { tick: number }) {
           const st = statusOf(m.lastCheckIn, tick)
           const alert = alerts[m.level]
           const stale = Date.now() - m.receivedAt > 60_000
-          const hops = hopCount(m.route)
           return (
             <li key={m.memberId} className="py-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -59,14 +58,14 @@ export function FamilyPanel({ tick }: { tick: number }) {
               </div>
               <div className="mt-0.5" title={describeRoute(m.route)}>
                 <Trust tone={stale ? 'warn' : 'ok'}>
-                  Heard {ago(m.receivedAt)} · via {hops} hop{hops === 1 ? '' : 's'} · {describeRoute(m.route)}
+                  Heard {ago(m.receivedAt)} · {passedAlong(m.route)} · {plainRoute(m.route)}
                 </Trust>
               </div>
             </li>
           )
         })}
       </ul>
-      {others.length === 0 && <p className="font-mono text-xs text-hollow-500 uppercase">Waiting for family on mesh</p>}
+      {others.length === 0 && <p className="font-mono text-xs text-hollow-500 uppercase">Waiting to hear from family</p>}
     </Card>
   )
 }

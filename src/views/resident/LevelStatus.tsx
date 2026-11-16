@@ -21,7 +21,7 @@ export function LevelStatus({ world, level, compact = false }: { world: World | 
     return (
       <div className={grid}>
         {labels.map((label) => (
-          <StatusTile key={label} label={label} state="nodata" word="NO DATA" value="no meter feed" />
+          <StatusTile key={label} label={label} state="nodata" word="NO DATA" value="no reading yet" />
         ))}
       </div>
     )

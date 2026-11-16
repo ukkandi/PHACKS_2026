@@ -34,10 +34,16 @@ Every push to `main` redeploys. All demo tabs must be on the same site (same ori
 
 Every browser tab is a separate device (own id, own IndexedDB). `?device=<name>` on `/resident` pins an identity.
 
-**Interface language:** every screen leads with short states — **NORMAL / WATCH / DANGER** (green / yellow / red; hazard
-stripes only on DANGER) — or a grey **NO DATA** when there's no reading or too few reports (under 20) to say anything; a
+**Interface language:** every screen leads with short states — **● NORMAL / ■ WATCH / ▲ DANGER** (shape + word + colour, never colour alone; hazard
+stripes only on DANGER) — or a grey **○ NO DATA** when there's no reading or too few reports (under 20) to say anything; a
 level is never shown NORMAL by default. Wardens can't confirm or dispute a figure until it has enough reports. Explanations sit behind the small **?** buttons. Small **●** trust chips show what's actually true
-right now ("Offline OK", "Mesh only · 6 nearby", "heard 3 min ago · via 2 hops", "based on 291 reports", "stored on this device").
+right now ("Works offline", "Network down · through neighbors' phones · 6 nearby", "heard 3 min ago · passed along by 1 phone", "based on 291 reports", "stored on this device"). Resident, terminal and warden screens use plain words ("public board", not "ledger"; "passed along by neighbors' phones", not "mesh hops").
+
+**Works in the dark** (resident phone):
+- **Voice check-in:** **◉ HOLD TO SPEAK** and say *"I'm okay"*, *"I need help"*, *"power out"* or *"need water"*. The screen shows what it heard and what it will do; nothing is sent until **CONFIRM · SEND**. In blackout mode it's the biggest control on the screen. Uses the browser's Web Speech API (Chrome, Edge, Safari); elsewhere it says *Voice not available here · use the buttons*. Note: Chrome's recognition needs an internet connection; in a real outage the buttons remain.
+- **Spoken alerts:** blackout warnings, blackout start, family check-ins and messages are read aloud in short, calm sentences — automatically in blackout mode, or anytime with **Spoken alerts: on**. Every spoken alert is also shown as a caption.
+- **Vibration:** distinct patterns for family OK (one buzz), message (three short), warning (two long), danger (three long). On devices that can't vibrate (laptops, iPhones), the screen flashes a banner with the same shape and word instead.
+- **Screen readers:** urgent alerts go to an assertive live region, the rest to a polite one; status tiles read as "Power: OUT, tripped"; HOLD TO SPEAK also works as tap-to-start / tap-to-stop for VoiceOver.
 
 ## Demo script (click by click)
 
@@ -58,22 +64,31 @@ Use one browser window.
 To restart at any point: **World Simulator → Reset & set up demo** (or the same button on `/`). Every open tab reloads into the starting state.
 
 ### 1. Everyone checks in
-- In Mara's, Teo's and Ilan's tabs: tap the big **I'M OKAY**, then **SEND NOW ▸**. (Or tap through the four one-tap details — MOOD, SLEEP, SYMPTOMS, WATER — the last tap sends.)
-- **Show:** the tile row (**POWER ON · AIR GOOD · WATER SAFE · HEAT HOT** on deep L38) and the trust chips (**● STORED ON THIS DEVICE · ● LEDGER: COUNTS ONLY**).
-- **Show:** Ilan's **FAMILY · ORIN-7** list shows Mara and Teo as **■ OKAY TODAY**, each with **● HEARD … · VIA 1 HOP · L38 ⇢NET L12**.
+- In Mara's, Teo's and Ilan's tabs: tap the big **I'M OKAY**, then **SEND NOW ▸**. (Or tap through the four one-tap details — MOOD, SLEEP, SYMPTOMS, WATER — the last tap sends. Or **HOLD TO SPEAK** → "I'm okay" → **CONFIRM · SEND**.)
+- In **Ilan's** tab: tap **○ Spoken alerts: off** so it reads **● Spoken alerts: on** — he'll hear Mara later.
+- **Show:** the tile row (**● ON · ● GOOD · ● SAFE · ■ HOT** on deep L38) and the trust chips (**● STORED ON THIS DEVICE · ● PUBLIC BOARD: COUNTS ONLY**).
+- **Show:** Ilan's **FAMILY · ORIN-7** list shows Mara and Teo as **● OKAY TODAY**, each with **● HEARD … · DIRECT · L38 → L12** — and his caption reads *"Mara checked in. Mara is okay."* (spoken, now that his alerts are on).
 
 ### 2. Blackout warning, hours ahead
 - **World Simulator:** click **Power surge**, then **Step +1h** about 4 times, until Mara's tab shows a yellow strip.
 - **Show Mara:** **BLACKOUT RISK · 8–16 HOURS · MEDIUM CONFIDENCE**, and the POWER tile at **AT RISK**. Tap **?** for the reason and what to do (predicted on her phone from the level meter; the Directorate announced nothing).
-- **Show Ilan:** **L38 BLACKOUT RISK** next to Mara in his family list, and under **OTHER LEVELS**. It reached him over the mesh.
+- **Show Ilan:** **L38 BLACKOUT RISK** next to Mara in his family list, and under **OTHER LEVELS**. It was passed along from phone to phone.
 - Optional: one or two more **Step +1h** clicks show the window tighten (e.g. 5–9 hours, high confidence).
 
 ### 3. Blackout: messages still get through
-- **World Simulator:** keep clicking **Step +1h** (about 9 times) until Mara's phone switches to **blackout mode**: dim amber on black, hazard-striped **BLACKOUT · LEVEL 38**, only status, family and messages.
-- **Show Mara:** her top bar reads **● MESH ONLY · N NEARBY**.
-- **Mara:** tap **POWER OUT**.
-- **Show Ilan:** "Power is out here." arrives with **VIA 2 HOPS · L38 ⇢RADIO L36 ⇢NET L12**.
-- Optional (dramatic): **World Simulator → Directorate network: shut ALL down**, then **Mara → I'M SAFE**. It reaches Ilan after about 13 radio hops. Click **Restore Directorate network (all)** afterwards.
+- **World Simulator:** keep clicking **Step +1h** (about 9 times) until Mara's phone switches to **blackout mode**: dim amber on black, hazard-striped **BLACKOUT · LEVEL 38**, a flash banner at the top, and it **says aloud** *"The power is out on Level 38. Lantern is still working through your neighbors' phones. Stay low, stay calm, and save your lamp."* HOLD TO SPEAK is now the biggest control.
+- **Show Mara:** her top bar reads **■ NETWORK DOWN · THROUGH NEIGHBORS' PHONES · N NEARBY**.
+- **Mara:** tap **POWER OUT** (or hold to speak: "power out" → **CONFIRM · SEND**).
+- **Show Ilan:** "Power is out here." arrives with **PASSED ALONG BY 1 PHONE · L38 → L36 → L12**, and his phone reads it aloud: *"Message from Mara. Power is out here."*
+- Optional (dramatic): **World Simulator → Directorate network: shut ALL down**, then **Mara → I'M SAFE**. It reaches Ilan passed along by about 12 phones. Click **Restore Directorate network (all)** afterwards.
+
+**The 10-second "in the dark" moment** (for the video — do it at the start of step 3, sound on, screen brightness down):
+1. Clicked once on Mara's tab beforehand (browsers only speak after you've interacted with the page). Ilan's spoken alerts are on.
+2. **Step +1h** into the blackout → Mara's screen goes dark amber, flashes **▲ DANGER**, and *says* the blackout alert. *(~4 s)*
+3. **Hold** Mara's **HOLD TO SPEAK**, say **"power out"**, release → **HEARD "power out" → ◆ POWER OUT** → **CONFIRM · SEND**. *(~4 s)*
+4. Ilan's phone says *"Message from Mara. Power is out here."* *(~2 s)*
+
+Voice recognition in Chrome needs the microphone allowed and an internet connection; if either is missing, use the **POWER OUT** button — the rest of the moment is the same.
 
 ### 4. Outbreak vs the official number
 - **World Simulator:** click **Symptom spike, levels 34–40**, then **Step +1h** 8 times.
@@ -106,6 +121,9 @@ To restart at any point: **World Simulator → Reset & set up demo** (or the sam
 - Open the **Directorate** tab: **DIRECTORATE ACCESS · READ-ONLY**, the same board, with **● SAME DATA AS PUBLIC · ● NO INDIVIDUAL DATA**.
 
 ## What is real vs simulated
+
+(Voice, speech and vibration are real browser features — Web Speech API, speech synthesis, Vibration API. The demo-check script simulates only the *recognition* step, via a test hook in `src/lib/voice.ts` that's active only when a test injects it before the page loads.)
+
 
 Real logic, unit-tested and running in the browser:
 - **Blackout predictor:** compares each hour's load with the same hour yesterday, and gives a time window with a confidence label.

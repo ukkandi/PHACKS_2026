@@ -329,3 +329,14 @@ export class MeshNode {
     this.channel.close()
   }
 }
+
+/** Plain words for how something reached you: "direct" or "passed along by 2 phones". */
+export function passedAlong(path: Hop[]): string {
+  const between = Math.max(0, path.length - 2) // devices between sender and you
+  return between === 0 ? 'direct' : `passed along by ${between} phone${between === 1 ? '' : 's'}`
+}
+
+/** "L38 → L36 → L12" — the levels it travelled through, without jargon. */
+export function plainRoute(path: Hop[]): string {
+  return path.map((h) => `L${h.level}`).join(' → ')
+}

@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react'
-import { Explain, StateTag, Trust } from '../../components/ui'
+import { Explain, StateTag, stateGlyph, Trust } from '../../components/ui'
 import type { LedgerView } from '../../lib/ledger'
 import { MIN_REPORTS } from '../../lib/outbreak'
 import { STATE_WORD, type State } from '../../lib/status'
@@ -9,8 +9,15 @@ import { airCell, illnessCell, powerCell, rowState, waterCell, type Cell } from 
 const color: Record<State, string> = { normal: 'text-ok', watch: 'text-warn', danger: 'text-danger', nodata: 'text-hollow-500' }
 
 function C({ cell }: { cell: Cell }) {
-  if (cell.state === 'nodata') return <span className="text-hollow-500">{cell.word}</span>
-  return <span className={cell.state === 'normal' ? 'text-cream' : `font-bold ${color[cell.state]}`}>{cell.word}</span>
+  if (cell.state === 'nodata') return <span className="text-hollow-500">○ {cell.word}</span>
+  if (cell.state === 'normal') return <span className="text-cream">{cell.word}</span>
+  // Never colour alone: problem cells carry their shape too.
+  return (
+    <span className={`font-bold ${color[cell.state]}`}>
+      <span aria-hidden>{stateGlyph[cell.state]} </span>
+      {cell.word.replace(' ▲', '')}
+    </span>
+  )
 }
 
 /** Departure-board view of every level. L1 at the top, the deepest level at the bottom. */
@@ -68,7 +75,10 @@ export function HollowMap({ view, bulletin }: { view: LedgerView; bulletin: Dire
                     <td className="px-2 py-1">
                       <span className="inline-flex items-center gap-1.5">
                         {st === 'danger' && <span className="hazard inline-block h-3 w-4" aria-hidden />}
-                        <span className={st === 'nodata' ? 'text-hollow-500' : `font-bold ${color[st]}`}>{STATE_WORD[st]}</span>
+                        <span className={st === 'nodata' ? 'text-hollow-500' : `font-bold ${color[st]}`}>
+                          <span aria-hidden>{stateGlyph[st]} </span>
+                          {STATE_WORD[st]}
+                        </span>
                       </span>
                     </td>
                     <td className="px-2 py-1">

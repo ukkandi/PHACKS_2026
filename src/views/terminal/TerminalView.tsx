@@ -215,10 +215,10 @@ function Terminal({ level }: { level: number }) {
               </button>
             </div>
             <div className="mt-2 flex items-center justify-between">
-              <Trust>Unit sealed to warden only</Trust>
+              <Trust>Only your warden sees your unit</Trust>
               <Explain label="About this terminal">
                 No account needed. Your unit number is sent — sealed — only to your block warden. Your answers count
-                anonymously toward Level {level} on the public ledger. Nothing is kept on this terminal.
+                anonymously toward Level {level} on the public board. Nothing is kept on this terminal.
               </Explain>
             </div>
           </Panel>
@@ -318,9 +318,9 @@ function Terminal({ level }: { level: number }) {
             </StateTag>
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
               <Trust tone={wardensTold > 0 ? 'ok' : 'warn'}>
-                {wardensTold > 0 ? `Sealed to ${wardensTold} vouched warden${wardensTold > 1 ? 's' : ''}` : 'No vouched warden on this level'}
+                {wardensTold > 0 ? `Sent privately to your warden${wardensTold > 1 ? 's' : ''}` : 'No trusted warden on this level yet'}
               </Trust>
-              <Trust>Counted anonymously · L{level}</Trust>
+              <Trust>Counted on the public board · no name</Trust>
               <Trust>Nothing kept here</Trust>
             </div>
             <button type="button" className={`${big} mt-3 w-full border-lamp bg-lamp text-hollow-950`} onClick={reset}>

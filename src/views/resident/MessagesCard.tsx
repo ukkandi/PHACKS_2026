@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Button, Card, Trust } from '../../components/ui'
-import { describeRoute, hopCount } from '../../lib/mesh'
+import { passedAlong, plainRoute } from '../../lib/mesh'
 import { useFamily } from '../../stores/familyStore'
 import { tickLabel } from '../../sim/world'
 
@@ -23,7 +23,7 @@ export function MessagesCard() {
   }
 
   return (
-    <Card title="Family messages" right={<Trust>No network needed</Trust>}>
+    <Card title="Family messages" right={<Trust>Works without network</Trust>}>
       <div className="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {QUICK.map((q) => (
           <Button key={q.label} className="min-h-14" onClick={() => void sendMessage(q.text)}>
@@ -56,7 +56,7 @@ export function MessagesCard() {
             <div>{m.text}</div>
             {!m.mine && (
               <Trust>
-                Via {hopCount(m.route)} hop{hopCount(m.route) === 1 ? '' : 's'} · {describeRoute(m.route)}
+                {passedAlong(m.route)} · {plainRoute(m.route)}
               </Trust>
             )}
           </li>

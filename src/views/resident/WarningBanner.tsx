@@ -24,7 +24,7 @@ export function WarningBanner({ world, level }: { world: World | null; level: nu
 
   const danger = band === 'blackout' || band === 'critical'
   return (
-    <section role="alert" className={`border-2 ${danger ? 'border-danger' : 'border-warn'}`}>
+    <section role="alert" data-testid="power-warning" className={`border-2 ${danger ? 'border-danger' : 'border-warn'}`}>
       {danger && <div className="hazard h-3" aria-hidden />}
       <div className="flex items-start justify-between gap-3 px-3 py-2">
         <div>
@@ -40,11 +40,11 @@ export function WarningBanner({ world, level }: { world: World | null; level: nu
                 <span>Risk {p.riskPct}%</span>
               </>
             )}
-            <span>From level meter</span>
+            <span>Measured on your level</span>
           </div>
         </div>
         <Explain label="What to do">
-          <p className="mb-2">{band === 'blackout' ? 'Power and the Directorate network are down on your level.' : p.reason}</p>
+          <p className="mb-2">{band === 'blackout' ? 'Power and the normal network are down on your level.' : p.reason}</p>
           <ul className="mb-2 list-disc space-y-1 pl-5">
             {ADVICE[band].map((a) => (
               <li key={a}>{a}</li>

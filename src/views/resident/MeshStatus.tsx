@@ -14,13 +14,15 @@ export function MeshStatus({ world, level }: { world: World | null; level: numbe
   return (
     <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
       {!running ? (
-        <Trust tone="muted">Mesh starting</Trust>
+        <Trust tone="muted">Connecting</Trust>
       ) : net ? (
-        <Trust>Net: Directorate + mesh</Trust>
+        <Trust>Network: normal</Trust>
       ) : (
-        <Trust tone={radio > 0 ? 'warn' : 'danger'}>Mesh only · {radio} nearby</Trust>
+        <Trust tone={radio > 0 ? 'warn' : 'danger'}>
+          Network down · through neighbors' phones · {radio} nearby
+        </Trust>
       )}
-      <Trust tone={offline ? 'ok' : 'muted'}>{offline ? 'Offline OK' : 'Offline: not cached'}</Trust>
+      <Trust tone={offline ? 'ok' : 'muted'}>{offline ? 'Works offline' : 'Not saved for offline yet'}</Trust>
     </span>
   )
 }
