@@ -48,29 +48,43 @@ right now ("Works offline", "Network down · through neighbors' phones · 6 near
 
 ## Autopilot recording (`/stage`)
 
-A hands-free, 16:9 version of the whole demo for the video — demo tooling, not part of Lantern. One page holds
-Mara's and Ilan's phones and the public board as real, live app pages (same-origin frames, so phones still pass
-messages to each other); a hidden World Simulator and the vouched warden run alongside. **▶ PLAY** resets
-everything and runs about 2½–3 minutes: title card → check-ins → power surge and warning → blackout (Mara goes
-dark and *speaks* the alert) → Mara's **POWER OUT** message → Ilan hears it → symptom spike → outbreak vs the
-official figure → allocation vs the Directorate → vouched warden confirms → impostor rejected → fake reports held
-back → closing card. Each beat has a one-sentence caption and highlights what changed.
+A hands-free, 16:9 cut of the demo for the video — **at most 1:55** — demo tooling, not part of Lantern. One page holds
+Mara's and Ilan's phones and the public board as real, live app pages (same-origin frames, so the phones still pass
+messages to each other); a hidden World Simulator and the vouched warden run alongside. When the page opens it
+**prepares** a fresh demo (a few seconds), then shows **▶ PLAY**.
 
-Controls: **▶ PLAY** (one click also turns on sound) · **❚❚ Pause / ▶ Resume** · **↺ Restart** — or **Space** and
-**R**. Controls fade out while playing (hover the top-right corner to see them).
+The run: title card (3 s) → check-ins → power warning with a **"▲ L38 · BLACKOUT IN ~9H" countdown** that ticks down
+with the simulated clock → **blackout**: one second of black and silence, an alarm, Mara's phone goes dark and speaks
+→ Mara's **POWER OUT** message reaches Ilan and is read aloud → outbreak (22% vs the Directorate's 6.4%) → allocation
+vs the Directorate → a vouched warden confirms, an impostor is rejected → closing card (5 s).
+
+- **Narrator:** nine short lines, spoken with the best available browser voice (a different one from the phones,
+  slower and lower). To use recorded narration instead, drop files at `public/narration/01.mp3` … `09.mp3` — any line
+  with a file plays the file. Phone speech is ducked under the narrator (with recorded narration it plays quietly
+  underneath; with browser voices, which can't overlap, it follows the narrator line, quieter, trimmed to its first
+  sentence when long).
+- **Sound design** (generated with Web Audio, no files): a low drone that rises in pitch and volume through the
+  countdown, cut to silence at the blackout, an alarm, then a quieter drone.
+- **Captions** for every beat, so the video also works muted.
+- **Timing:** each beat is paced by its narrator line but has a hard deadline; the closing card starts by 1:47 and the
+  run ends by 1:54 whatever voice the browser uses.
+
+Controls: **▶ PLAY** (one click also turns on sound) · **❚❚ Pause / ▶ Resume** · **↺ Restart** — or **Space** and **R**.
+Controls fade out while playing (hover the top-right corner to see them). A restart re-prepares the world behind the
+title card, so for the cleanest take reload the page and wait for ▶ PLAY.
 
 ### Recording steps
-1. Use **Chrome** on a 1920×1080 screen (or larger). Use the deployed site, or `npm run dev`.
+1. Use **Chrome** on a 1920×1080 screen (or larger), on the deployed site or `npm run dev`.
 2. Close every other Lantern tab (the stage resets all demo data in this browser).
-3. Open **`/stage`**, wait until the three frames have loaded (about 3 s), then press **F11** (fullscreen) so the
-   stage fills the screen exactly at 1920×1080.
-4. Turn system volume up; check the output device your recorder captures.
-5. Start your screen recorder, capturing the full screen **with system audio** (e.g. OBS: Display Capture +
-   Desktop Audio; macOS: QuickTime can't capture system audio — use OBS or Loom).
-6. Click **▶ PLAY** once. Don't touch the mouse again; the run ends on the closing card.
-7. Stop recording ~3 s after the last closing line appears. Trim the PLAY click off the start if you like.
+3. Open **`/stage`** and wait for **▶ PLAY** (it says *Preparing…* for a few seconds first).
+4. Press **F11** (fullscreen) so the stage fills the screen at exactly 1920×1080.
+5. Turn system volume up and make sure your recorder captures **system audio** (OBS: Display Capture + Desktop Audio;
+   QuickTime can't capture system audio).
+6. Start recording, click **▶ PLAY** once, and don't touch the mouse again.
+7. Stop recording when the closing card's last line has been read (under 1:55 after the click). Trim the click off
+   the start.
 
-If anything goes wrong mid-run, press **R** (or ↺ Restart) — it resets everything and starts again.
+If anything goes wrong mid-run, reload the page and start again from step 3.
 
 ## Demo script (click by click)
 

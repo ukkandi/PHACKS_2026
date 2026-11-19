@@ -1,8 +1,13 @@
-// DEMO-ONLY: /stage — a hands-free, 16:9 autopilot of the whole demo for screen recording.
+// DEMO-ONLY: /stage — a hands-free, 16:9 autopilot of the demo for screen recording (≤ 1:55).
 // Real app pages run in same-origin frames (so the phone-to-phone mesh works as with tabs); the
-// script in ./show.ts clicks their buttons. One click on PLAY also unlocks the stage's voice.
+// script in ./show.ts clicks their buttons. A narrator, generated sound design and a blackout
+// countdown sit on top. One click on PLAY unlocks sound.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Aborted, runShow, type Clock, type FrameName, type StageApi } from './show'
+import { useWorld } from '../../lib/worldFeed'
+import { predictBlackout } from '../../sim/predict'
+import { StageAudio } from './audio'
+import { Director } from './director'
+import { Aborted, prepareWorld, runShow, type Clock, type FrameName, type StageApi } from './show'
 import './stage.css'
 
 const W = 1920
@@ -18,15 +23,18 @@ const SRC: Record<FrameName, string> = {
   warden: '/warden?level=38&device=warden38',
 }
 
-const CHAPTERS = ['Two phones', 'Check-in', 'Warning', 'Blackout', 'Message', 'Outbreak', 'Allocation', 'Warden', 'Impostor', 'Trust']
+const CHAPTERS = ['Check-in', 'Warning', 'Blackout', 'Message', 'Outbreak', 'Allocation', 'Warden']
 
-type Phase = 'idle' | 'playing' | 'paused' | 'done'
+type Phase = 'preparing' | 'ready' | 'playing' | 'paused' | 'done'
 
 interface StageWindow extends Window {
   __lanternStage?: { speak: (text: string, urgent: boolean) => void }
   __stageLog?: { name: string; ok: boolean; detail?: string }[]
   __stageSpoken?: string[]
+  __stageNarration?: unknown[]
   __stageDone?: boolean
+  __stageRunMs?: number
+  __stageVoices?: { narrator: string; phone: string; recordedLines: number }
 }
 
 function useFit() {
@@ -43,61 +51,104 @@ function useFit() {
 export default function StageView() {
   const scale = useFit()
   const frames = useRef<Partial<Record<FrameName, HTMLIFrameElement | null>>>({})
-  const clock = useRef<Clock>({ speed: Math.max(0.25, Number(new URLSearchParams(location.search).get('speed')) || 1), paused: false, gen: 0 })
-  const [phase, setPhase] = useState<Phase>('idle')
+  const speed = Math.max(0.25, Number(new URLSearchParams(location.search).get('speed')) || 1)
+  const clock = useRef<Clock>({ speed, paused: false, gen: 0 })
+  const audio = useRef(new StageAudio())
+  const director = useRef(new Director())
+  const [phase, setPhase] = useState<Phase>('preparing')
   const [beat, setBeat] = useState<{ chapter: string; caption: string; focus: FrameName[] }>({ chapter: '', caption: '', focus: [] })
   const [card, setCard] = useState<'title' | 'closing' | null>(null)
+  const [black, setBlack] = useState(false)
+  const [countdownOn, setCountdownOn] = useState(false)
+  const [countdown, setCountdown] = useState<number | null>(null)
+  const prepared = useRef(false)
   const w = window as StageWindow
 
+  // Narrator + phone voices; the framed phones hand their speech to us (see alertFeed.speak).
   useEffect(() => {
     document.title = 'Lantern — works in the dark (stage)'
+    director.current.speed = speed
     w.__stageSpoken = []
-    // The stage speaks for the framed phones (see alertFeed.speak).
-    w.__lanternStage = {
-      speak: (text, urgent) => {
-        w.__stageSpoken!.push(text)
-        if (!('speechSynthesis' in window)) return
-        if (urgent) speechSynthesis.cancel()
-        const u = new SpeechSynthesisUtterance(text)
-        u.lang = 'en-US'
-        u.rate = 0.92
-        const voice =
-          speechSynthesis.getVoices().find((v) => /en[-_]US/i.test(v.lang) && /Google|Samantha|Natural/i.test(v.name)) ??
-          speechSynthesis.getVoices().find((v) => /^en/i.test(v.lang))
-        if (voice) u.voice = voice
-        speechSynthesis.speak(u)
-      },
-    }
+    w.__lanternStage = { speak: (text) => director.current.phone(text) }
     return () => {
       delete w.__lanternStage
     }
-  }, [w])
+  }, [w, speed])
+
+  // Get the world ready as soon as the page opens, so PLAY starts on a clean, ready demo.
+  useEffect(() => {
+    let live = true
+    void (async () => {
+      await new Promise((r) => setTimeout(r, 1500))
+      await director.current.prepare()
+      const ok = await prepareWorld((n) => frames.current[n] ?? null, () => live)
+      if (!live) return
+      prepared.current = ok
+      setPhase('ready')
+    })()
+    return () => {
+      live = false
+    }
+  }, [])
+
+  // Countdown: hours until Level 38's feeder fails, from the live world; only ever ticks down.
+  const world = useWorld()
+  const cd = useRef<{ shown: number | null; initial: number; tick: number }>({ shown: null, initial: 1, tick: 0 })
+  useEffect(() => {
+    if (!countdownOn) {
+      cd.current = { shown: null, initial: 1, tick: 0 }
+      setCountdown(null)
+      return
+    }
+    const l = world?.levels[37]
+    if (!world || !l || l.blackout) return
+    const p = predictBlackout(l.loadHistory, { temperature: l.temperature })
+    const est = p.hoursToFailure ?? p.hoursRange?.[0]
+    if (est === undefined || est === null) return
+    const e = Math.max(1, Math.ceil(est))
+    const c = cd.current
+    if (c.shown === null) cd.current = { shown: e, initial: e, tick: world.tick }
+    else if (world.tick > c.tick) {
+      // Tick down 1 h per simulated hour; follow a sharper forecast, but never drop more than 2 h per hour.
+      const k = world.tick - c.tick
+      cd.current = { ...c, shown: Math.max(1, c.shown - 2 * k, Math.min(c.shown - k, e)), tick: world.tick }
+    }
+    const shown = cd.current.shown!
+    setCountdown(shown)
+    audio.current.tension(1 - (shown - 1) / Math.max(1, cd.current.initial - 1))
+  }, [world, countdownOn])
 
   const play = useCallback(() => {
-    // The click itself unlocks audio: speak a silent utterance inside the gesture.
-    if ('speechSynthesis' in window) {
-      speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(' ')
-      u.volume = 0
-      speechSynthesis.speak(u)
-    }
+    // Inside the click: unlock speech and Web Audio.
+    director.current.unlock()
+    audio.current.unlock()
     clock.current.gen++
     clock.current.paused = false
     w.__stageLog = []
     w.__stageSpoken = []
+    w.__stageNarration = []
     w.__stageDone = false
+    w.__stageVoices = { ...director.current.voiceNames, recordedLines: director.current.recordedLines }
+    const wasPrepared = prepared.current
+    prepared.current = false
+    const t0 = performance.now()
     setPhase('playing')
     const api: StageApi = {
       frame: (n) => frames.current[n] ?? null,
       setBeat: (chapter, caption, focus) => setBeat({ chapter, caption, focus }),
       setCard,
-      speaking: () => 'speechSynthesis' in window && (speechSynthesis.speaking || speechSynthesis.pending),
-      spoken: () => w.__stageSpoken ?? [],
+      setBlack,
+      setCountdown: (on) => setCountdownOn(on),
+      countdown: () => cd.current.shown,
+      director: director.current,
+      audio: audio.current,
       check: (name, ok, detail) => w.__stageLog!.push({ name, ok, detail }),
     }
-    runShow(api, clock.current)
+    runShow(api, clock.current, wasPrepared)
       .then(() => {
+        w.__stageRunMs = Math.round(performance.now() - t0)
         w.__stageDone = true
+        audio.current.stopDrone()
         setPhase('done')
       })
       .catch((e) => {
@@ -111,16 +162,23 @@ export default function StageView() {
   const togglePause = useCallback(() => {
     const c = clock.current
     c.paused = !c.paused
-    if ('speechSynthesis' in window) {
-      if (c.paused) speechSynthesis.pause()
-      else speechSynthesis.resume()
+    if (c.paused) {
+      director.current.pause()
+      audio.current.suspend()
+    } else {
+      director.current.resume()
+      audio.current.resume()
     }
     setPhase(c.paused ? 'paused' : 'playing')
   }, [])
 
   const restart = useCallback(() => {
-    if ('speechSynthesis' in window) speechSynthesis.cancel()
+    clock.current.gen++
+    director.current.stop()
+    audio.current.stopDrone()
     setCard(null)
+    setBlack(false)
+    setCountdownOn(false)
     play()
   }, [play])
 
@@ -128,9 +186,10 @@ export default function StageView() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === ' ') {
         e.preventDefault()
-        if (phase === 'idle' || phase === 'done') play()
-        else togglePause()
-      } else if (e.key === 'r' || e.key === 'R') restart()
+        if (phase === 'ready') play()
+        else if (phase === 'done') restart()
+        else if (phase !== 'preparing') togglePause()
+      } else if ((e.key === 'r' || e.key === 'R') && phase !== 'preparing') restart()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -188,9 +247,11 @@ export default function StageView() {
                 {phase === 'paused' ? '▶ Resume' : '❚❚ Pause'}
               </button>
             ) : null}
-            <button type="button" onClick={phase === 'idle' ? play : restart} className="border-2 border-hollow-500 px-3 py-1 font-mono text-sm font-bold uppercase">
-              {phase === 'idle' ? '▶ Play' : '↺ Restart'}
-            </button>
+            {phase !== 'preparing' && phase !== 'ready' && (
+              <button type="button" onClick={restart} className="border-2 border-hollow-500 px-3 py-1 font-mono text-sm font-bold uppercase">
+                ↺ Restart
+              </button>
+            )}
           </div>
         </header>
 
@@ -202,6 +263,16 @@ export default function StageView() {
           </div>
           {frame('board', BOARD, 'Public board · all levels')}
         </main>
+
+        {/* Countdown to the blackout, ticking with the simulated clock */}
+        {countdownOn && countdown !== null && (
+          <div role="status" className="absolute z-10 border-4 border-danger bg-black" style={{ top: 64, left: '50%', transform: 'translateX(-50%)' }}>
+            <div className="hazard h-2" aria-hidden />
+            <div className="px-8 py-2 font-mono text-[40px] font-bold tracking-[0.12em] text-danger uppercase">
+              ▲ L38 · Blackout in ~{countdown}h
+            </div>
+          </div>
+        )}
 
         {/* Caption */}
         <section aria-live="polite" className="absolute inset-x-0 bottom-0 flex h-[176px] items-center gap-8 border-t-2 border-hollow-800 bg-black px-9">
@@ -249,27 +320,35 @@ export default function StageView() {
               <p
                 key={line}
                 className={`stage-fade-in stage-display m-0 text-[96px] leading-none font-bold ${i === 2 ? 'text-lamp' : 'text-cream'}`}
-                style={{ animationDelay: `${i * 1.6}s` }}
+                style={{ animationDelay: `${i * 1.1}s` }}
               >
                 {line}
               </p>
             ))}
-            <div className="stage-fade-in mt-6 font-mono text-2xl tracking-[0.25em] text-hollow-300 uppercase" style={{ animationDelay: '5s' }}>
+            <div className="stage-fade-in mt-6 font-mono text-2xl tracking-[0.25em] text-hollow-300 uppercase" style={{ animationDelay: '3.3s' }}>
               Lantern · community-owned · offline-first
             </div>
           </div>
         )}
 
+        {/* The blackout's second of darkness */}
+        {black && <div aria-hidden className="absolute inset-0 z-40 bg-black" />}
+
         {/* Before PLAY: one click starts everything and unlocks sound. */}
-        {phase === 'idle' && (
+        {(phase === 'preparing' || phase === 'ready') && (
           <button
             type="button"
-            onClick={play}
-            className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 bg-black/80"
-            aria-label="Play the demo with sound"
+            onClick={phase === 'ready' ? play : undefined}
+            disabled={phase === 'preparing'}
+            className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 bg-black/85"
+            aria-label={phase === 'ready' ? 'Play the demo with sound' : 'Preparing the demo'}
           >
-            <span className="border-4 border-lamp px-16 py-8 font-mono text-6xl font-bold tracking-[0.15em] text-lamp uppercase">▶ Play</span>
-            <span className="font-mono text-xl tracking-wider text-hollow-300 uppercase">One click starts the demo and turns on sound · Space pause · R restart</span>
+            <span className={`border-4 px-16 py-8 font-mono text-6xl font-bold tracking-[0.15em] uppercase ${phase === 'ready' ? 'border-lamp text-lamp' : 'border-hollow-700 text-hollow-500'}`}>
+              {phase === 'ready' ? '▶ Play' : 'Preparing…'}
+            </span>
+            <span className="font-mono text-xl tracking-wider text-hollow-300 uppercase">
+              {phase === 'ready' ? 'One click starts the demo and turns on sound · Space pause · R restart' : 'Resetting the Hollow and waking the phones'}
+            </span>
           </button>
         )}
       </div>
