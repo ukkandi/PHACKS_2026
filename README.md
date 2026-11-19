@@ -25,6 +25,7 @@ Every push to `main` redeploys. All demo tabs must be on the same site (same ori
 | Route | Who | What |
 |---|---|---|
 | `/` and `/demo` | **Demo launcher — demo only** | Plain list: Reset & set up demo, open every demo tab |
+| `/stage` | **Autopilot — demo only** | Hands-free 16:9 run of the whole demo for screen recording (▶ PLAY) |
 | `/resident` | Resident's phone | Status screen (power/air/water/heat), giant I'M OKAY, family, messages; dim blackout mode |
 | `/terminal?level=38` | Shared level terminal | Big-button check-in by unit number, no account, clears itself |
 | `/warden?level=38` | Block warden | Who to visit first, check in people without devices, verify the ledger |
@@ -44,6 +45,32 @@ right now ("Works offline", "Network down · through neighbors' phones · 6 near
 - **Spoken alerts:** blackout warnings, blackout start, family check-ins and messages are read aloud in short, calm sentences — automatically in blackout mode, or anytime with **Spoken alerts: on**. Every spoken alert is also shown as a caption.
 - **Vibration:** distinct patterns for family OK (one buzz), message (three short), warning (two long), danger (three long). On devices that can't vibrate (laptops, iPhones), the screen flashes a banner with the same shape and word instead.
 - **Screen readers:** urgent alerts go to an assertive live region, the rest to a polite one; status tiles read as "Power: OUT, tripped"; HOLD TO SPEAK also works as tap-to-start / tap-to-stop for VoiceOver.
+
+## Autopilot recording (`/stage`)
+
+A hands-free, 16:9 version of the whole demo for the video — demo tooling, not part of Lantern. One page holds
+Mara's and Ilan's phones and the public board as real, live app pages (same-origin frames, so phones still pass
+messages to each other); a hidden World Simulator and the vouched warden run alongside. **▶ PLAY** resets
+everything and runs about 2½–3 minutes: title card → check-ins → power surge and warning → blackout (Mara goes
+dark and *speaks* the alert) → Mara's **POWER OUT** message → Ilan hears it → symptom spike → outbreak vs the
+official figure → allocation vs the Directorate → vouched warden confirms → impostor rejected → fake reports held
+back → closing card. Each beat has a one-sentence caption and highlights what changed.
+
+Controls: **▶ PLAY** (one click also turns on sound) · **❚❚ Pause / ▶ Resume** · **↺ Restart** — or **Space** and
+**R**. Controls fade out while playing (hover the top-right corner to see them).
+
+### Recording steps
+1. Use **Chrome** on a 1920×1080 screen (or larger). Use the deployed site, or `npm run dev`.
+2. Close every other Lantern tab (the stage resets all demo data in this browser).
+3. Open **`/stage`**, wait until the three frames have loaded (about 3 s), then press **F11** (fullscreen) so the
+   stage fills the screen exactly at 1920×1080.
+4. Turn system volume up; check the output device your recorder captures.
+5. Start your screen recorder, capturing the full screen **with system audio** (e.g. OBS: Display Capture +
+   Desktop Audio; macOS: QuickTime can't capture system audio — use OBS or Loom).
+6. Click **▶ PLAY** once. Don't touch the mouse again; the run ends on the closing card.
+7. Stop recording ~3 s after the last closing line appears. Trim the PLAY click off the start if you like.
+
+If anything goes wrong mid-run, press **R** (or ↺ Restart) — it resets everything and starts again.
 
 ## Demo script (click by click)
 

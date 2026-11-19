@@ -1,0 +1,24 @@
+/* Demo stage only: deck typography for the title and closing cards. */
+@import "@fontsource/space-grotesk/latin-500.css";
+@import "@fontsource/space-grotesk/latin-700.css";
+
+.stage-display {
+  font-family: "Space Grotesk", "Inter", system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .stage-fade-in {
+    animation: stage-fade-in 0.7s ease-out both;
+  }
+  @keyframes stage-fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}

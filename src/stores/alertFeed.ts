@@ -40,6 +40,13 @@ function speak(text: string, urgent: boolean) {
   // Spoken log: read by scripts/demo-check.cjs (and handy when debugging without speakers).
   const w = window as unknown as { __lanternSpoken?: string[] }
   ;(w.__lanternSpoken ??= []).push(text)
+  // Demo stage (/stage): when this phone is embedded in the autopilot page, the stage speaks for it —
+  // browsers only allow speech after a click on the page that speaks, and that click is PLAY.
+  const stage = window.parent !== window ? (window.parent as unknown as { __lanternStage?: { speak: (t: string, u: boolean) => void } }).__lanternStage : undefined
+  if (stage) {
+    stage.speak(text, urgent)
+    return
+  }
   if (!('speechSynthesis' in window)) return
   if (urgent) window.speechSynthesis.cancel()
   const u = new SpeechSynthesisUtterance(text)

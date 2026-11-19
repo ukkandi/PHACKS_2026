@@ -174,6 +174,23 @@ const has = (text, needle) => text.toLowerCase().includes(needle.toLowerCase())
   check('Step 10: without speech recognition, a clear fallback to the buttons', has(await txt(np.locator('main')), 'Voice not available here · use the buttons') && (await np.getByRole('button', { name: "I'm okay", exact: true }).count()) === 1)
   await voiceCtx.close()
 
+  // Step 11: the hands-free autopilot (/stage) runs the whole show end to end (sped up 6×).
+  const stageCtx = await b.newContext({ viewport: { width: 1920, height: 1080 } })
+  const st = await stageCtx.newPage()
+  st.on('pageerror', (e) => errs.push('stage: ' + e))
+  await st.goto(URL + '/stage?speed=6')
+  await st.waitForTimeout(2000)
+  await st.getByRole('button', { name: 'Play the demo with sound' }).click()
+  await st.waitForFunction(() => window.__stageDone === true, null, { timeout: 180_000 }).catch(() => {})
+  const stageLog = (await st.evaluate(() => window.__stageLog)) ?? []
+  const stageFails = stageLog.filter((l) => !l.ok).map((l) => l.name)
+  check('Step 11: /stage autopilot finishes', await st.evaluate(() => window.__stageDone === true))
+  check(`Step 11: every autopilot beat checks out (${stageLog.length} checks)`, stageLog.length >= 14 && stageFails.length === 0, stageFails.join('; '))
+  const stageSpoken = (await st.evaluate(() => window.__stageSpoken)) ?? []
+  check('Step 11: stage speaks the blackout and the message', stageSpoken.some((t) => t.startsWith('The power is out on Level 38')) && stageSpoken.includes('Message from Mara. Power is out here.'))
+  check('Step 11: closing card shown', has(await txt(st.locator('body')), 'They can never turn it off.'))
+  await stageCtx.close()
+
   check('No page errors', errs.length === 0, errs.slice(0, 3).join(' / '))
   console.log(fails ? `\n${fails} FAILED` : '\nALL PASS')
   await b.close()

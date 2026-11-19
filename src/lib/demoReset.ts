@@ -16,7 +16,8 @@ export function markResetting() {
 export function listenForDemoReset() {
   const ch = new BroadcastChannel(CONTROL)
   ch.onmessage = (e: MessageEvent<{ type: string }>) => {
-    if (e.data?.type !== 'reset') return
+    // The autopilot stage only hosts other pages in frames; they reload, it stays.
+    if (e.data?.type !== 'reset' || location.pathname === '/stage') return
     markResetting()
     // Give the initiating tab a moment to delete storage, then come back fresh.
     setTimeout(() => location.reload(), 700)
@@ -39,8 +40,8 @@ async function deleteLanternDatabases() {
   )
 }
 
-/** Wipe all demo data in every tab, then reload this tab. */
-export async function resetDemo() {
+/** Wipe all demo data in every tab, then reload this tab (unless `reloadSelf` is false). */
+export async function resetDemo({ reloadSelf = true }: { reloadSelf?: boolean } = {}) {
   markResetting()
   const ch = new BroadcastChannel(CONTROL)
   ch.postMessage({ type: 'reset' })
@@ -49,5 +50,5 @@ export async function resetDemo() {
   await deleteLanternDatabases()
   // Clear again in case another tab wrote just before it heard the broadcast.
   for (const key of Object.keys(localStorage)) if (key.startsWith('lantern-')) localStorage.removeItem(key)
-  setTimeout(() => location.reload(), 300)
+  if (reloadSelf) setTimeout(() => location.reload(), 300)
 }

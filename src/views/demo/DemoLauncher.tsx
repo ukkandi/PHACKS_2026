@@ -78,6 +78,14 @@ export function DemoLauncher() {
           ))}
         </ol>
 
+        <a
+          href="/stage"
+          className="flex min-h-14 items-center justify-between border-2 border-lamp px-3 font-mono text-sm font-bold tracking-wider text-lamp uppercase hover:bg-hollow-800"
+        >
+          <span>▶ Autopilot · hands-free recording</span>
+          <span className="text-xs font-normal text-hollow-300">/stage · 16:9 · ~3 min</span>
+        </a>
+
         <div className="flex items-center justify-between border-2 border-hollow-700 px-3 py-2">
           <span className="font-mono text-xs tracking-[0.12em] text-hollow-300 uppercase">Script · Step +1h, clock paused</span>
           <Explain label="Demo script">
