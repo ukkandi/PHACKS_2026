@@ -176,7 +176,7 @@ export async function runShow(api: StageApi, clock: Clock) {
   api.setBeat('Two phones', 'Two phones, 26 levels apart: Mara on Level 38, Ilan on Level 12.', ['mara', 'ilan'])
   d('mara')?.defaultView?.scrollTo(0, 0)
   d('ilan')?.defaultView?.scrollTo(0, 0)
-  await sleep(5000)
+  await sleep(6000)
 
   api.setBeat('Two phones', 'Ilan turns on spoken alerts.', ['ilan'])
   const toggle = find(d('ilan'), 'button', /Spoken alerts: off/)
@@ -200,7 +200,7 @@ export async function runShow(api: StageApi, clock: Clock) {
   const checked = await waitFor(() => /Mara · L38\s*●\s*Okay today/i.test(textOf(section(d('ilan'), /^Family/))), 10_000)
   api.check("check-ins: Ilan sees Mara 'okay today'", !!checked)
   highlight(d('ilan'), [section(d('ilan'), /^Family/)])
-  await sleep(5000)
+  await sleep(6000)
 
   // 2 · Warning, hours ahead
   api.setBeat('Warning', "Level 38's power load starts to climb.", ['mara'])
@@ -218,7 +218,7 @@ export async function runShow(api: StageApi, clock: Clock) {
   const ilanHeard = await waitFor(() => /L38 blackout/i.test(textOf(section(d('ilan'), /^Family/))) && section(d('ilan'), /^Family/), 6000)
   highlight(d('ilan'), [ilanHeard || null])
   api.check('warning reaches Ilan over the mesh', !!ilanHeard)
-  await sleep(6000)
+  await sleep(7000)
 
   // 3 · Blackout
   api.setBeat('Blackout', 'The feeder trips. Level 38 goes dark.', ['mara'])
@@ -232,7 +232,7 @@ export async function runShow(api: StageApi, clock: Clock) {
   await waitFor(() => api.spoken().some((t) => t.startsWith('The power is out on Level 38')), 4000)
   await speechIdle(15_000)
   api.check('blackout alert spoken aloud', api.spoken().some((t) => t.startsWith('The power is out on Level 38')))
-  await sleep(1500)
+  await sleep(3000)
 
   // 4 · A message with no network
   api.setBeat('Message', 'With no network on her level, Mara taps POWER OUT.', ['mara'])
@@ -258,13 +258,13 @@ export async function runShow(api: StageApi, clock: Clock) {
   const boardDoc = () => d('board')
   highlight(boardDoc(), [find(boardDoc(), 'tr', /^L34\b/)])
   await sim.step(8, 450)
-  await sleep(2500)
+  await sleep(4000)
 
   api.setBeat('Outbreak', 'The public board turns Levels 34 to 40 red.', ['board'])
   const rows = [34, 35, 36, 37, 38, 39, 40].map((n) => find(boardDoc(), 'tr', new RegExp(`^L${n}\\b`)))
   highlight(boardDoc(), rows)
   api.check('board: L34–L40 in DANGER', rows.every((r) => /danger/i.test(textOf(r))))
-  await sleep(7000)
+  await sleep(8000)
 
   const l38 = await waitFor(() => find(section(boardDoc(), /^Outbreak watch$/), 'li', /Level 38 · outbreak/i), 8000)
   const m = textOf(l38).match(/Lantern\s*([\d.]+)%.*?Official\s*([\d.]+)%/i)
@@ -305,10 +305,10 @@ export async function runShow(api: StageApi, clock: Clock) {
   sim.click(/Impostor warden confirms outbreak on L38/)
   const rejected = await waitFor(() => find(boardDoc(), 'li', /W-38-WAR confirms outbreak · unverified warden, rejected/i), 8000)
   highlight(boardDoc(), [rejected])
-  await sleep(6000)
+  await sleep(7000)
   api.setBeat('Impostor', 'The public board rejects it.', ['board'])
   api.check('impostor rejected (unverified warden)', !!rejected)
-  await sleep(5000)
+  await sleep(6000)
 
   // 9 · Fake flood
   api.setBeat('Trust', 'A rogue phone floods Level 5 with 300 fake reports.', ['board'])
@@ -317,13 +317,13 @@ export async function runShow(api: StageApi, clock: Clock) {
   sim.click(/inject 300 fake reports/)
   const held = await waitFor(() => find(boardDoc(), 'li', /L5 · 300 reports · held, not counted/i), 8000)
   highlight(boardDoc(), [held])
-  await sleep(5000)
+  await sleep(6000)
   api.setBeat('Trust', 'They are held back, not counted.', ['board'])
   api.check('fake reports held back', !!held)
-  await sleep(6000)
+  await sleep(7000)
 
   // 10 · Closing card
   api.setBeat('', '', [])
   api.setCard('closing')
-  await sleep(11_000)
+  await sleep(12_000)
 }
