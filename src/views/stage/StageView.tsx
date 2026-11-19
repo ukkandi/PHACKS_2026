@@ -27,7 +27,6 @@ const SRC: Record<FrameName, string> = {
   warden: '/warden?level=38&device=warden38',
 }
 
-const RING_GLIDE = 'left 600ms cubic-bezier(.4,0,.2,1), top 600ms cubic-bezier(.4,0,.2,1), width 600ms, height 600ms, opacity 300ms'
 const CHAPTERS = ['The warning', 'The dark', 'The truth', 'The trust']
 
 type Phase = 'preparing' | 'ready' | 'playing' | 'paused' | 'done'
@@ -61,6 +60,7 @@ interface StageWindow extends Window {
   __stageVoices?: { narrator: string; phone: string; recordedLines: number }
   __stageFocus?: Focus
   __stagePointer?: string
+  __stageZoom?: number
 }
 
 function useFit() {
@@ -78,8 +78,10 @@ export default function StageView() {
   const scale = useFit()
   const stageRef = useRef<HTMLDivElement>(null)
   const ringRef = useRef<HTMLDivElement>(null)
+  const dimRef = useRef<HTMLDivElement>(null)
   const frames = useRef<Partial<Record<FrameName, HTMLIFrameElement | null>>>({})
-  const pointer = useRef<{ frame: FrameName | 'stage' | null; el: Element | null; at: number }>({ frame: null, el: null, at: 0 })
+  const worldRef = useRef<HTMLDivElement>(null)
+  const pointer = useRef<{ frame: FrameName | 'stage' | null; els: Element[]; zoom: number; at: number }>({ frame: null, els: [], zoom: 1, at: 0 })
   const speed = Math.max(0.25, Number(new URLSearchParams(location.search).get('speed')) || 1)
   const clock = useRef<Clock>({ speed, paused: false, gen: 0 })
   const audio = useRef(new StageAudio())
@@ -121,47 +123,103 @@ export default function StageView() {
     }
   }, [])
 
-  // The pointer ring follows its element every frame (through scrolling and camera moves).
+  // Camera + pointer, every frame: the camera eases (~600 ms) to zoom on the pointed region, and the
+  // ring follows it exactly (through scrolling, panel moves and the zoom itself).
   useEffect(() => {
     let raf = 0
+    const cam = { z: 1, x: 0, y: 0, t: 0 }
+    /** The pointed region as displayed now, in stage px (union of its elements), or null. */
+    const region = (): { x: number; y: number; w: number; h: number } | null => {
+      const stage = stageRef.current
+      const { frame, els } = pointer.current
+      if (!stage || !frame) return null
+      const s = stage.getBoundingClientRect()
+      const sk = s.width / W
+      let x0 = Infinity
+      let y0 = Infinity
+      let x1 = -Infinity
+      let y1 = -Infinity
+      for (const el of els) {
+        if (!el.isConnected) continue
+        const r = el.getBoundingClientRect()
+        let x = r.left
+        let y = r.top
+        let k = 1
+        if (frame !== 'stage') {
+          const iframe = frames.current[frame]
+          if (!iframe) continue
+          const vh = iframe.contentWindow?.innerHeight ?? iframe.offsetHeight
+          if (r.bottom < 0 || r.top > vh) continue // scrolled out of view
+          const f = iframe.getBoundingClientRect()
+          k = f.width / iframe.offsetWidth
+          x = f.left + r.left * k
+          y = f.top + r.top * k
+        }
+        x0 = Math.min(x0, x)
+        y0 = Math.min(y0, y)
+        x1 = Math.max(x1, x + r.width * k)
+        y1 = Math.max(y1, y + r.height * k)
+      }
+      if (x0 === Infinity) return null
+      return { x: (x0 - s.left) / sk, y: (y0 - s.top) / sk, w: (x1 - x0) / sk, h: (y1 - y0) / sk }
+    }
     const tick = () => {
       raf = requestAnimationFrame(tick)
       const ring = ringRef.current
-      const stage = stageRef.current
-      if (!ring || !stage) return
-      const { frame, el } = pointer.current
-      if (!frame || !el || !el.isConnected) {
+      const world = worldRef.current
+      if (!ring || !world) return
+      // The stage never scrolls (a framed page's scrolling must not move it).
+      for (const el of [stageRef.current, world, ...Array.from(world.querySelectorAll('figure div'))]) {
+        if (el && (el.scrollTop || el.scrollLeft)) el.scrollTo(0, 0)
+      }
+      const now = performance.now()
+      const dt = cam.t ? Math.min(100, now - cam.t) : 16
+      cam.t = now
+      const p = pointer.current
+      // Where the camera should be: zoomed so the region sits centred above the caption.
+      let tz = 1
+      let tx = 0
+      let ty = 0
+      const r = region()
+      if (r && p.zoom > 1 && p.frame !== 'stage') {
+        const lw = r.w / cam.z
+        const lh = r.h / cam.z
+        const lx = (r.x - cam.x) / cam.z
+        const ly = (r.y - cam.y) / cam.z
+        const viewH = H - CAPTION_H - 56
+        tz = Math.max(1, Math.min(p.zoom, (W * 0.86) / lw, (viewH * 0.8) / lh))
+        tx = W / 2 - (lx + lw / 2) * tz
+        ty = 56 + viewH / 2 - (ly + lh / 2) * tz
+      }
+      const a = 1 - Math.exp(-dt / 140)
+      if (Math.abs(tz - cam.z) > 0.0005 || Math.abs(tx - cam.x) > 0.3 || Math.abs(ty - cam.y) > 0.3) {
+        cam.z += (tz - cam.z) * a
+        cam.x += (tx - cam.x) * a
+        cam.y += (ty - cam.y) * a
+        world.style.transform = `translate(${cam.x}px, ${cam.y}px) scale(${cam.z})`
+      }
+      ;(window as StageWindow).__stageZoom = Math.round(cam.z * 100) / 100
+      // The ring: exactly on the region (re-measured after the camera moved), shown once the camera lands.
+      const q = region()
+      const dim = dimRef.current
+      if (!q) {
         ring.style.opacity = '0'
+        if (dim) dim.style.opacity = '0'
         return
       }
-      const r = el.getBoundingClientRect()
-      let x = r.left
-      let y = r.top
-      let k = 1
-      if (frame !== 'stage') {
-        const iframe = frames.current[frame]
-        if (!iframe) return
-        const vh = iframe.contentWindow?.innerHeight ?? iframe.offsetHeight
-        if (r.bottom < 0 || r.top > vh) {
-          ring.style.opacity = '0' // scrolled out of view
-          return
-        }
-        const f = iframe.getBoundingClientRect()
-        k = f.width / iframe.offsetWidth
-        x = f.left + r.left * k
-        y = f.top + r.top * k
+      const pad = 10
+      const [x0, y0, x1, y1] = [q.x - pad, q.y - pad, q.x + q.w + pad, q.y + q.h + pad]
+      ring.style.left = `${x0}px`
+      ring.style.top = `${y0}px`
+      ring.style.width = `${x1 - x0}px`
+      ring.style.height = `${y1 - y0}px`
+      const on = now - p.at > 450 ? '1' : '0'
+      ring.style.opacity = on
+      if (dim) {
+        // Everything but the ringed region, softly dimmed.
+        dim.style.clipPath = `polygon(evenodd, 0 0, ${W}px 0, ${W}px ${H}px, 0 ${H}px, 0 0, ${x0}px ${y0}px, ${x0}px ${y1}px, ${x1}px ${y1}px, ${x1}px ${y0}px, ${x0}px ${y0}px)`
+        dim.style.opacity = on
       }
-      const s = stage.getBoundingClientRect()
-      const sk = s.width / W
-      const pad = 8
-      ring.style.left = `${(x - s.left) / sk - pad}px`
-      ring.style.top = `${(y - s.top) / sk - pad}px`
-      ring.style.width = `${(r.width * k) / sk + pad * 2}px`
-      ring.style.height = `${(r.height * k) / sk + pad * 2}px`
-      ring.style.opacity = '1'
-      // Glide to a new target (600 ms), then follow it exactly (through scrolling and camera moves).
-      const moving = performance.now() - pointer.current.at < 650
-      ring.style.transition = moving ? RING_GLIDE : 'opacity 300ms'
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
@@ -217,9 +275,10 @@ export default function StageView() {
         w.__stageFocus = f
         setFocus(f)
       },
-      point: (frame, el) => {
-        pointer.current = { frame, el, at: performance.now() }
-        w.__stagePointer = el ? `${frame}:${(el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 60)}` : ''
+      point: (frame, el, zoom = 1) => {
+        const els = (Array.isArray(el) ? el : el ? [el] : []).filter((e): e is Element => !!e)
+        pointer.current = { frame: els.length ? frame : null, els, zoom, at: performance.now() }
+        w.__stagePointer = els.length ? `${frame}:${els.map((e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()).join(' | ').slice(0, 80)}` : ''
       },
       setBlack,
       setCountdown: (on) => setCountdownOn(on),
@@ -260,7 +319,7 @@ export default function StageView() {
     clock.current.gen++
     director.current.stop()
     audio.current.stopDrone()
-    pointer.current = { frame: null, el: null, at: 0 }
+    pointer.current = { frame: null, els: [], zoom: 1, at: 0 }
     setCard(null)
     setBlack(false)
     setCountdownOn(false)
@@ -339,9 +398,11 @@ export default function StageView() {
         </header>
 
         {/* The three panels; the camera moves them (one prominent at a time). */}
-        {panel('board', BOARD, 'Public board · all levels')}
-        {panel('mara', PHONE, 'Mara · Level 38')}
-        {panel('ilan', PHONE, 'Ilan · Level 12')}
+        <div ref={worldRef} className="absolute inset-0" style={{ transformOrigin: 'top left' }}>
+          {panel('board', BOARD, 'Public board · all levels')}
+          {panel('mara', PHONE, 'Mara · Level 38')}
+          {panel('ilan', PHONE, 'Ilan · Level 12')}
+        </div>
 
         {/* Countdown to the blackout, ticking with the simulated clock (beside Mara's phone). */}
         <div
@@ -357,12 +418,23 @@ export default function StageView() {
           </div>
         </div>
 
+        {/* A soft dim over everything except the ringed region. */}
+        <div
+          ref={dimRef}
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-30 bg-black/50"
+          style={{ opacity: 0, transition: 'opacity 350ms ease' }}
+        />
         {/* The pointer: an amber ring (with ▼) on the one element that matters. */}
         <div
           ref={ringRef}
           aria-hidden
-          className="pointer-events-none absolute z-30 border-4 border-lamp"
-          style={{ opacity: 0, transition: RING_GLIDE }}
+          className="pointer-events-none absolute z-30 rounded-md border-[7px] border-lamp"
+          style={{
+            opacity: 0,
+            transition: 'opacity 350ms ease',
+            boxShadow: '0 0 36px 8px rgba(242, 163, 58, 0.45), inset 0 0 24px 2px rgba(242, 163, 58, 0.25)',
+          }}
         >
           <div className="absolute -top-12 left-1/2 -translate-x-1/2 font-mono text-4xl leading-none text-lamp">▼</div>
         </div>
