@@ -1,5 +1,6 @@
-// DEMO-ONLY autopilot script for /stage. It drives the real app pages in the stage's frames exactly as
-// a person would — clicking their buttons — so nothing here changes how Lantern works.
+// DEMO-ONLY autopilot script for /stage — the director's cut. It drives the real app pages in the
+// stage's frames exactly as a person would (clicking their buttons), so nothing here changes how
+// Lantern works. One focus at a time: the stage's camera shows one panel, the pointer rings one element.
 //
 // Timing: the narrator paces each beat, but every beat also has a hard deadline (measured from PLAY,
 // excluding pauses). The closing card starts no later than CAP.closing and the run always ends by
@@ -9,6 +10,8 @@ import type { StageAudio } from './audio'
 import type { Director } from './director'
 
 export type FrameName = 'mara' | 'ilan' | 'board' | 'sim' | 'warden'
+export type Focus = 'mara' | 'ilan' | 'board' | 'none'
+export type Card = { kind: 'cold' } | { kind: 'chapter'; n: number; title: string } | { kind: 'closing' } | null
 
 export class Aborted extends Error {}
 
@@ -21,13 +24,17 @@ export interface Clock {
 
 export interface StageApi {
   frame: (name: FrameName) => HTMLIFrameElement | null
-  setBeat: (chapter: string, caption: string, focus: FrameName[]) => void
-  setCard: (card: 'title' | 'closing' | null) => void
+  /** Caption (≤ 8 words) and the chapter it belongs to ('' = none). */
+  setBeat: (chapter: string, caption: string) => void
+  setCard: (card: Card) => void
+  /** Which panel the camera shows. */
+  camera: (focus: Focus) => void
+  /** Ring one element: inside a framed page, or on the stage itself ('stage'). null = no ring. */
+  point: (frame: FrameName | 'stage' | null, el: Element | null) => void
   /** Full-screen black (the blackout's second of darkness). */
   setBlack: (on: boolean) => void
-  /** Show/hide the "L38 · BLACKOUT IN ~9H" countdown (its value comes from the live world). */
+  /** Show/hide the "L38 · BLACKOUT IN ~Nh" countdown (its value comes from the live world). */
   setCountdown: (on: boolean) => void
-  /** Hours currently shown on the countdown, or null. */
   countdown: () => number | null
   director: Director
   audio: StageAudio
@@ -36,17 +43,16 @@ export interface StageApi {
 
 /** Deadlines in ms from PLAY (show time). */
 export const CAP = {
-  title: 3_000,
-  checkins: 21_000,
-  warning: 38_000,
-  blackout: 50_000,
-  message: 62_000,
-  outbreak: 76_000,
-  allocation: 87_000,
-  warden: 101_000,
-  closing: 107_000,
+  cold: 9_000,
+  mara: 27_000,
+  warning: 45_000,
+  dark: 68_000,
+  truth: 92_000,
+  trust: 105_000,
+  closing: 108_000,
   end: 114_000,
 }
+export const CHAPTER_CARD_MS = 1_500
 export const CLOSING_CARD_MS = 5_000
 
 const raw = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -70,6 +76,13 @@ function find<T extends Element = HTMLElement>(root: Document | Element | null, 
   return null
 }
 
+/** The innermost element matching (so a ring hugs the badge itself, not its wrapper). */
+function findDeepest(root: Document | Element | null, selector: string, re: RegExp): HTMLElement | null {
+  if (!root) return null
+  const all = Array.from(root.querySelectorAll<HTMLElement>(selector)).filter((el) => re.test(norm(el.textContent)))
+  return all.find((el) => !all.some((o) => o !== el && el.contains(o))) ?? null
+}
+
 /** A <section> whose own heading matches. */
 function section(doc: Document | null, heading: RegExp): HTMLElement | null {
   if (!doc) return null
@@ -81,22 +94,8 @@ function section(doc: Document | null, heading: RegExp): HTMLElement | null {
 
 const textOf = (el: Element | null) => norm(el?.textContent)
 
-function highlight(doc: Document | null, els: (Element | null)[], scroll = true) {
-  if (!doc) return
-  if (!doc.getElementById('stage-hl-style')) {
-    const st = doc.createElement('style')
-    st.id = 'stage-hl-style'
-    st.textContent = '.stage-hl{outline:3px solid #F2A33A !important;outline-offset:3px !important;}'
-    doc.head.appendChild(st)
-  }
-  doc.querySelectorAll('.stage-hl').forEach((e) => e.classList.remove('stage-hl'))
-  const real = els.filter((e): e is Element => !!e)
-  real.forEach((e) => e.classList.add('stage-hl'))
-  if (scroll && real[0]) real[0].scrollIntoView({ block: 'center', behavior: 'smooth' })
-}
-
-function clearHighlights(doc: Document | null) {
-  doc?.querySelectorAll('.stage-hl').forEach((e) => e.classList.remove('stage-hl'))
+function show(el: Element | null, block: ScrollLogicalPosition = 'center') {
+  el?.scrollIntoView({ block, behavior: 'smooth' })
 }
 
 function click(el: Element | null): boolean {
@@ -155,7 +154,6 @@ export async function runShow(api: StageApi, clock: Clock, prepared: boolean) {
     return showMs
   }
   try {
-    /** Dwell (show time, frozen while paused). */
     const sleep = async (ms: number) => {
       const until = elapsed() + ms
       while (elapsed() < until) {
@@ -163,7 +161,6 @@ export async function runShow(api: StageApi, clock: Clock, prepared: boolean) {
         await raw(40)
       }
     }
-    /** Wait for something, but never past an absolute deadline (show time). */
     const until = async <T>(pred: () => T | null | undefined | false, deadline: number): Promise<T | null> => {
       for (;;) {
         alive()
@@ -178,198 +175,239 @@ export async function runShow(api: StageApi, clock: Clock, prepared: boolean) {
         await raw(80)
       }
     }
-    /**
-     * Wait for something the APP does (a message crossing the mesh, a signature check): bounded by the
-     * beat's deadline, but always allowing a few real seconds — app events don't speed up in tests.
-     */
+    /** Wait for something the APP does: bounded by the deadline, but always allowing a few real seconds. */
     const event = <T>(pred: () => T | null | undefined | false, deadline: number, realMs = 4_000) =>
       until(pred, Math.max(deadline, elapsed() + realMs * clock.speed))
-    /** Resolve when a promise settles or the deadline passes. */
     const settle = async (p: Promise<unknown>, deadline: number) => {
       let done = false
       void p.then(() => (done = true))
       await until(() => done, deadline)
     }
     const quiet = (deadline: number) => until(() => !api.director.speaking(), deadline)
-    const gap = (ms: number) => Math.max(150, ms / clock.speed)
     const d = (n: FrameName) => docOf(api.frame(n))
     const board = () => d('board')
-    const sim = {
-      click: (re: RegExp) => click(find(d('sim'), 'button', re)),
-      step: async () => {
-        alive()
-        click(find(d('sim'), 'button', /^Step \+1h$/))
-        await raw(gap(0))
-        while (clock.paused) await raw(100)
-      },
+    const step = async () => {
+      alive()
+      click(find(d('sim'), 'button', /^Step \+1h$/))
+      await raw(Math.max(150, 150 / clock.speed))
+      while (clock.paused) await raw(100)
     }
+    const chapter = async (n: number, title: string) => {
+      api.point(null, null)
+      api.setBeat('', '')
+      api.setCard({ kind: 'chapter', n, title })
+      await sleep(CHAPTER_CARD_MS)
+      api.setCard(null)
+    }
+    const ilanFamily = () => section(d('ilan'), /^Family/)
 
-    // 0 · Title (3 s). Narration 1 starts and carries on over the first beat.
-    api.setCard('title')
-    api.setBeat('', '', [])
+    // ── Cold open: black, line 1 ──────────────────────────────────────────────────────────────
+    api.camera('none')
+    api.setCard({ kind: 'cold' })
     api.audio.startDrone()
-    if (!prepared) {
-      api.check('setup: fresh world, 40/40 levels, warden vouched by 3', await prepareWorld(api.frame, () => clock.gen === gen))
-    } else api.check('setup: fresh world, 40/40 levels, warden vouched by 3', true)
+    api.check('setup: fresh world, 40/40 levels, warden vouched by 3', prepared || (await prepareWorld(api.frame, () => clock.gen === gen)))
     alive()
+    api.setBeat('', 'Level 38. Two kilometers underground.')
     const n1 = api.director.narrate(1)
-    await sleep(CAP.title)
-    api.setCard(null)
+    await sleep(3_000)
+    await settle(n1, CAP.cold)
 
-    // 1 · Check-ins (short)
-    api.setBeat('Check-in', 'Two phones, 26 levels apart: Mara on Level 38, Ilan on Level 12.', ['mara', 'ilan'])
+    // ── Mara alone: one tap ───────────────────────────────────────────────────────────────────
+    api.setCard(null)
     d('mara')?.defaultView?.scrollTo(0, 0)
     d('ilan')?.defaultView?.scrollTo(0, 0)
-    await settle(n1, CAP.checkins - 9_000)
+    api.camera('mara')
+    api.setBeat('', "This is Mara. One tap: I'm okay.")
     const n2 = api.director.narrate(2)
-    api.setBeat('Check-in', 'Each of them checks in with one tap.', ['mara', 'ilan'])
-    for (const who of ['mara', 'ilan'] as FrameName[]) {
-      const ok = find(d(who), 'button', /^I'm okay$/)
-      highlight(d(who), [ok], false)
-      await sleep(900)
-      click(ok)
-      await raw(250)
-      click(find(d(who), 'button', /^Send now/))
-      await raw(250)
-      highlight(d(who), [find(d(who), 'section[aria-label="Today\'s check-in"]')], false)
-    }
-    const checked = await event(() => /Mara · L38\s*●\s*Okay today/i.test(textOf(section(d('ilan'), /^Family/))), CAP.checkins)
-    api.check("check-ins: Ilan sees Mara 'okay today'", !!checked)
+    await sleep(900)
+    const ok = find(d('mara'), 'button', /^I'm okay$/)
+    api.point('mara', ok)
+    await sleep(2_600)
+    click(ok)
+    await raw(250)
+    const send = find(d('mara'), 'button', /^Send now/)
+    api.point('mara', send)
+    await sleep(900)
+    click(send)
+    await raw(300)
+    api.point('mara', find(d('mara'), 'section[aria-label="Today\'s check-in"]'))
+    const maraOk = await event(() => find(ilanFamily(), 'li', /^Mara · L38\s*●\s*Okay today/i), CAP.mara - 5_000)
+    api.check("check-ins: Ilan sees Mara 'okay today'", !!maraOk)
+    await settle(n2, CAP.mara - 4_000)
+
+    // Ilan, briefly: "Mara · okay".
+    api.camera('ilan')
+    show(maraOk)
+    api.setBeat('', 'Twenty-six levels up, Ilan sees it.')
+    await sleep(700)
+    api.point('ilan', maraOk)
     // Silently: Ilan turns on spoken alerts (so his phone can read Mara's message out later).
     click(find(d('ilan'), 'button', /Spoken alerts: off/))
-    await settle(n2, CAP.checkins)
-    clearHighlights(d('mara'))
-    clearHighlights(d('ilan'))
+    await sleep(2_300)
 
-    // 2 · Warning + countdown (the drone rises with it)
-    api.setBeat('Warning', "Level 38's power load starts to climb.", ['mara'])
-    d('mara')?.defaultView?.scrollTo({ top: 0, behavior: 'smooth' })
+    // ── 1 · THE WARNING ───────────────────────────────────────────────────────────────────────
+    api.camera('mara')
+    d('mara')?.defaultView?.scrollTo(0, 0)
+    await chapter(1, 'The warning')
+    api.director.hold(true) // phones stay quiet until after the blackout's silence
     const n3 = api.director.narrate(3)
     let n3done = false
     void n3.then(() => (n3done = true))
-    api.director.hold(true) // keep the phones quiet until after the blackout's silence
-    sim.click(/^Power surge$/)
+    click(find(d('sim'), 'button', /^Power surge$/))
+    api.setBeat('The warning', 'Lantern sees the blackout coming.')
     const hasWarning = () => !!find(d('mara'), '[data-testid="power-warning"]')
     const isDark = () => !!d('mara')?.querySelector('.blackout-mode')
-    for (let i = 0; i < 12 && !hasWarning(); i++) await sim.step().then(() => sleep(650))
-    const warning = find(d('mara'), '[data-testid="power-warning"]')
-    highlight(d('mara'), [warning])
-    api.check('warning: hours-ahead window + confidence', /Blackout risk · \d+–\d+ hours.*confidence/i.test(textOf(warning)), textOf(warning).slice(0, 70))
-    api.setCountdown(true)
-    api.setBeat('Warning', "Mara's phone sees a blackout coming hours ahead — nobody announced it.", ['mara'])
-    let ilanWarned = false
-    for (let i = 0; i < 24 && !isDark(); i++) {
-      // Don't let the lights go out mid-sentence: near the end, wait for the narrator.
-      if ((api.countdown() ?? 99) <= 2 && !n3done) await until(() => n3done, CAP.warning)
-      await sim.step()
-      await sleep(700)
-      ilanWarned ||= /L38 blackout/i.test(textOf(section(d('ilan'), /^Family/)))
+    for (let i = 0; i < 12 && !hasWarning(); i++) {
+      await step()
+      await sleep(650)
     }
-    api.check('warning reaches Ilan over the mesh', ilanWarned)
+    const warning = find(d('mara'), '[data-testid="power-warning"]')
+    api.point('mara', warning)
+    api.check('warning: hours-ahead window + confidence', /Blackout risk · \d+–\d+ hours.*confidence/i.test(textOf(warning)), textOf(warning).slice(0, 70))
+    await sleep(1_600)
+    api.setCountdown(true)
+    await raw(100)
+    api.point('stage', document.querySelector('[data-stage="countdown"]'))
+    api.setBeat('The warning', 'Nobody announced it. Hours of warning.')
+    let ilanWarned = false
+    // Step toward the failure, but stop one hour short: the lights go out under the chapter card.
+    for (let i = 0; i < 24 && !isDark(); i++) {
+      if ((api.countdown() ?? 99) <= 1) break
+      if ((api.countdown() ?? 99) <= 3 && !n3done) await until(() => n3done, CAP.warning)
+      await step()
+      await sleep(750)
+      ilanWarned ||= /L38 blackout/i.test(textOf(ilanFamily()))
+    }
+    await settle(n3, CAP.warning)
+    api.check('warning reaches Ilan over the mesh', ilanWarned || /L38 blackout/i.test(textOf(ilanFamily())))
 
-    // 3 · Blackout: one second of black and silence, an alarm, then the narrator.
-    // The story needs the blackout itself, so this wait isn't capped by the timeline (it's seconds).
-    const dark = await until(isDark, elapsed() + 8_000)
-    api.check('blackout: Mara switches to blackout mode', !!dark)
+    // ── 2 · THE DARK ──────────────────────────────────────────────────────────────────────────
+    await chapter(2, 'The dark')
     api.setCountdown(false)
     api.audio.cut()
     api.setBlack(true)
+    // The feeder trips in the dark (never capped: the story needs the blackout itself).
+    for (let i = 0; i < 8 && !isDark(); i++) await step()
+    const dark = await event(isDark, elapsed(), 6_000)
+    api.check('blackout: Mara switches to blackout mode', !!dark)
     await sleep(1_000)
     api.setBlack(false)
     api.audio.alarm()
-    api.setBeat('Blackout', 'The feeder trips. Level 38 goes dark.', ['mara'])
+    api.camera('mara')
     d('mara')?.defaultView?.scrollTo(0, 0)
-    highlight(d('mara'), [find(d('mara'), 'section[role="alert"]')], false)
+    api.point('mara', find(d('mara'), 'section[role="alert"]'))
+    api.setBeat('The dark', 'The lights go out. The network too.')
     await sleep(900)
     api.audio.afterBlackout()
     const n4 = api.director.narrate(4)
     api.director.hold(false) // Mara's own spoken alert follows, ducked
-    await settle(n4, CAP.blackout - 3_000)
-    api.setBeat('Blackout', "Mara's phone dims, flashes and speaks the alert.", ['mara'])
-    await quiet(CAP.blackout)
-    api.check('blackout alert spoken (phone)', (window as unknown as { __stageSpoken?: string[] }).__stageSpoken?.some((t) => t.startsWith('The power is out on Level 38')) ?? false)
-
-    // 4 · Mara's message, phone to phone
-    api.setBeat('Message', 'With no network on her level, Mara taps POWER OUT.', ['mara'])
-    const n5 = api.director.narrate(5)
+    await settle(n4, CAP.dark - 16_000)
+    api.check(
+      'blackout alert spoken (phone)',
+      (window as unknown as { __stageSpoken?: string[] }).__stageSpoken?.some((t) => t.startsWith('The power is out on Level 38')) ?? false,
+    )
     const powerOut = find(d('mara'), 'button', /^Power out$/)
-    highlight(d('mara'), [powerOut])
-    await sleep(1_400)
+    show(powerOut)
+    await sleep(500)
+    api.point('mara', powerOut)
+    api.setBeat('The dark', 'Mara sends: power out.')
+    await quiet(CAP.dark - 13_000)
+    await sleep(800)
     click(powerOut)
-    const msg = await event(() => find(d('ilan'), 'li', /Power is out here\./), CAP.message - 4_000)
-    api.setBeat('Message', "Neighbors' phones pass it up to Ilan, and his phone reads it out.", ['ilan'])
-    highlight(d('ilan'), [msg])
-    await settle(n5, CAP.message)
-    await quiet(CAP.message)
+    await sleep(700)
+
+    // Cut to Ilan receiving it.
+    const n5 = api.director.narrate(5)
+    api.camera('ilan')
+    api.point(null, null)
+    const msg = await event(() => find(d('ilan'), 'li', /Power is out here\./), CAP.dark - 9_000)
+    show(msg)
+    await sleep(500)
+    api.point('ilan', msg)
+    api.setBeat('The dark', 'Phone to phone, it reaches Ilan.')
+    await settle(n5, CAP.dark)
+    await quiet(CAP.dark)
     const spoken = (window as unknown as { __stageSpoken?: string[] }).__stageSpoken ?? []
     api.check(
       "message reaches Ilan 'passed along by 1 phone' and is read aloud",
       /passed along by 1 phone/i.test(textOf(msg)) && spoken.includes('Message from Mara. Power is out here.'),
       textOf(msg).slice(0, 80),
     )
-    clearHighlights(d('mara'))
 
-    // 5 · Outbreak vs the official number
-    api.setBeat('Outbreak', 'Fever spreads through the deep levels.', ['board'])
-    clearHighlights(d('ilan'))
-    const n6 = api.director.narrate(6)
-    sim.click(/Symptom spike/)
-    for (let i = 0; i < 8; i++) {
-      await sim.step()
-      await raw(gap(250))
-    }
-    const rows = [34, 35, 36, 37, 38, 39, 40].map((n) => find(board(), 'tr', new RegExp(`^L${n}\\b`)))
-    highlight(board(), rows)
-    api.check('board: L34–L40 in DANGER', rows.every((r) => /danger/i.test(textOf(r))))
-    await sleep(2_500)
-    const l38 = await event(() => find(section(board(), /^Outbreak watch$/), 'li', /Level 38 · outbreak/i), CAP.outbreak - 3_000)
-    const m = textOf(l38).match(/Lantern\s*([\d.]+)%.*?Official\s*([\d.]+)%/i)
+    // ── 3 · THE TRUTH ─────────────────────────────────────────────────────────────────────────
+    // Fever spreads while the chapter card is up, so the board is ready when we cut to it.
+    click(find(d('sim'), 'button', /Symptom spike/))
+    const spreading = (async () => {
+      for (let i = 0; i < 8; i++) await step()
+    })()
+    await chapter(3, 'The truth')
+    await spreading
+    const l38 = await event(() => {
+      const r = find(board(), 'tr', /^L38\b/)
+      return r && /danger/i.test(textOf(r)) && /\d+\.\d%.*\d+\.\d%/.test(textOf(r)) ? r : null
+    }, CAP.truth - 20_000)
+    show(l38)
+    api.camera('board')
+    const m = textOf(l38).match(/(\d+\.\d)%\D*?(\d+\.\d)%/)
     const lan = m ? Math.round(Number(m[1])) : NaN
     const off = m ? Number(m[2]).toFixed(1) : '?'
-    api.setBeat('Outbreak', `Residents report ${lan}% sick on Level 38 — the Directorate says ${off}%.`, ['board'])
-    highlight(board(), [l38])
-    api.check('outbreak: Lantern vs lower official figure', !!m && Number(m[1]) > 2 * Number(m[2]), m ? `${m[1]}% vs ${m[2]}%` : '')
-    await settle(n6, CAP.outbreak)
-    await sleep(1_500)
+    const n6 = api.director.narrate(6)
+    await sleep(700)
+    api.point('board', l38)
+    api.setBeat('The truth', `${lan}% sick. The Directorate says ${off}%.`)
+    api.check('board: L38 row in DANGER', /danger/i.test(textOf(l38)))
+    api.check('outbreak: Lantern vs lower official figure', !!m && Number(m[1]) > 2 * Number(m[2]), m ? `${m[1]}% vs ${m[2]}%` : textOf(l38).slice(0, 60))
+    await settle(n6, CAP.truth - 11_000)
 
-    // 6 · Allocation (brief)
-    api.setBeat('Allocation', "Lantern says power Level 38's air first — the Directorate sent most to its own districts.", ['board'])
-    const n7 = api.director.narrate(7)
     const rec = find(board(), 'section[aria-labelledby="rec-h"]')
     const dir = find(board(), 'section[aria-labelledby="dir-h"]')
-    highlight(board(), [rec])
+    const grid = rec?.parentElement ?? rec
+    show(grid)
+    const n7 = api.director.narrate(7)
+    await sleep(700)
+    api.point('board', find(rec, 'li', /Level 38 air pumps/) ?? rec)
+    api.setBeat('The truth', "Air for Level 38. Power went upstairs.")
     api.check('allocation: Level 38 air pumps first', /Level 38 air pumps/i.test(textOf(rec)))
     api.check('allocation: Directorate → Levels 1–3', /Levels 1–3 administrative/i.test(textOf(dir)))
-    await sleep(3_500)
-    highlight(board(), [rec, dir])
-    await settle(n7, CAP.allocation)
+    await sleep(4_000)
+    api.point('board', find(dir, 'li', /Levels 1–3 administrative/) ?? dir)
+    await settle(n7, CAP.truth)
 
-    // 7 · Vouched warden confirms; an impostor is rejected
-    api.setBeat('Warden', 'A warden vouched for by three neighbors confirms the outbreak.', ['board'])
-    const n8 = api.director.narrate(8)
+    // ── 4 · THE TRUST ─────────────────────────────────────────────────────────────────────────
     const confirmBtn = await event(() => {
       const b = find<HTMLButtonElement>(d('warden'), 'button', /^Confirm outbreak$/)
       return b && !b.disabled ? b : null
-    }, CAP.warden - 8_000)
+    }, CAP.trust - 12_000)
     click(confirmBtn)
-    const confirmed = await event(() => find(board(), 'li', /Level 38 · outbreak.*confirmed by warden W-38/i), CAP.warden - 6_000)
-    highlight(board(), [confirmed])
-    api.check('vouched warden confirmation shown on the board', !!confirmed)
-    await sleep(3_500)
-    api.setBeat('Warden', 'An impostor claims to be that warden — the public board rejects it.', ['board'])
-    sim.click(/Impostor warden confirms outbreak on L38/)
-    const rejected = await event(() => find(board(), 'li', /W-38-WAR confirms outbreak · unverified warden, rejected/i), CAP.warden - 2_000)
-    highlight(board(), [rejected])
+    await chapter(4, 'The trust')
+    const badge = await event(
+      () => findDeepest(find(section(board(), /^Outbreak watch$/), 'li', /Level 38 · outbreak/i), 'span', /✓ confirmed by warden W-38/i),
+      CAP.trust - 9_000,
+    )
+    show(badge)
+    const n8 = api.director.narrate(8)
+    await sleep(700)
+    api.point('board', badge)
+    api.setBeat('The trust', 'Vouched by neighbors, the warden confirms.')
+    api.check('vouched warden confirmation shown on the board', !!badge)
+    await sleep(3_200)
+    click(find(d('sim'), 'button', /Impostor warden confirms outbreak on L38/))
+    const rejected = await event(() => find(board(), 'li', /W-38-WAR confirms outbreak · unverified warden, rejected/i), CAP.trust - 3_000)
+    show(rejected)
+    await sleep(600)
+    api.point('board', rejected)
+    api.setBeat('The trust', 'An impostor tries. Rejected.')
     api.check('impostor rejected (unverified warden)', !!rejected)
-    await settle(n8, CAP.warden)
-    await sleep(800)
+    await settle(n8, CAP.trust)
+    await sleep(900)
 
-    // 8 · Closing (5 s card); narration 9 starts just before it (no lead-in if we're running late).
+    // ── Closing (5 s card), line 9 ────────────────────────────────────────────────────────────
     const n9 = api.director.narrate(9)
-    if (elapsed() < CAP.closing - 1_000) await sleep(1_000)
-    if (elapsed() > CAP.closing) api.check('closing card on time', false, `${Math.round(elapsed() / 1000)} s`)
-    api.setBeat('', '', [])
-    api.setCard('closing')
+    if (clock.speed <= 1 && elapsed() > CAP.closing) api.check('closing card on time', false, `${Math.round(elapsed() / 1000)} s`)
+    api.point(null, null)
+    api.setBeat('', '')
+    api.camera('none')
+    api.setCard({ kind: 'closing' })
     api.audio.fadeOut(CLOSING_CARD_MS)
     await sleep(CLOSING_CARD_MS)
     await settle(n9, CAP.end)

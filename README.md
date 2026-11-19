@@ -53,25 +53,32 @@ Mara's and Ilan's phones and the public board as real, live app pages (same-orig
 messages to each other); a hidden World Simulator and the vouched warden run alongside. When the page opens it
 **prepares** a fresh demo (a few seconds), then shows **▶ PLAY**.
 
-The run: title card (3 s) → check-ins → power warning with a **"▲ L38 · BLACKOUT IN ~9H" countdown** that ticks down
-with the simulated clock → **blackout**: one second of black and silence, an alarm, Mara's phone goes dark and speaks
-→ Mara's **POWER OUT** message reaches Ilan and is read aloud → outbreak (22% vs the Directorate's 6.4%) → allocation
-vs the Directorate → a vouched warden confirms, an impostor is rejected → closing card (5 s).
+It's a **director's cut: one story, one focus at a time.** The camera shows one panel large and centred (the others
+fade to ~15% or slide away, 600 ms moves) and an **amber ring ▼** points at the one thing that matters: Mara's
+I'M OKAY, the blackout countdown, the message Ilan receives, the L38 row on the board, the warden badge, the
+impostor's "rejected" line. Captions are ≤ 8 words.
 
-- **Narrator:** nine short lines, spoken with the best available browser voice (a different one from the phones,
-  slower and lower). To use recorded narration instead, drop files at `public/narration/01.mp3` … `09.mp3` — any line
-  with a file plays the file. Phone speech is ducked under the narrator (with recorded narration it plays quietly
-  underneath; with browser voices, which can't overlap, it follows the narrator line, quieter, trimmed to its first
-  sentence when long).
+1. **Cold open** (black) → Mara's phone alone: she taps I'M OKAY → Ilan's phone briefly shows *Mara · okay*.
+2. **1 · THE WARNING** (1.5 s chapter card) → Mara's warning, then a **"▲ L38 · BLACKOUT IN ~12H" countdown** ticking down with the simulated clock.
+3. **2 · THE DARK** → one second of black and silence, an alarm, Mara's dark screen speaks; she sends **POWER OUT** → cut to Ilan receiving it, passed along by a neighbour's phone, read aloud.
+4. **3 · THE TRUTH** → the board zoomed to the L38 row: Lantern 22% vs the Directorate's 6.4% → the power allocation: Level 38 air pumps vs Levels 1–3.
+5. **4 · THE TRUST** → "✓ confirmed by warden W-38-WAR" (vouched by neighbours) → the impostor's confirmation **rejected**.
+6. Closing card (5 s).
+
+- **Narrator:** nine lines, spoken with the best available browser voice (a different one from the phones,
+  slower and lower). To use recorded narration instead, drop files at `public/narration/01.mp3` … `09.mp3`
+  (`.m4a` and `.wav` work too) — any line with a file plays the file. Phone speech is ducked under the narrator
+  (with recorded narration it plays quietly underneath; with browser voices, which can't overlap, it follows the
+  narrator line, quieter, trimmed to its first sentence when long).
 - **Sound design** (generated with Web Audio, no files): a low drone that rises in pitch and volume through the
   countdown, cut to silence at the blackout, an alarm, then a quieter drone.
 - **Captions** for every beat, so the video also works muted.
-- **Timing:** each beat is paced by its narrator line but has a hard deadline; the closing card starts by 1:47 and the
-  run ends by 1:54 whatever voice the browser uses.
+- **Timing:** each beat is paced by its narrator line but has a hard deadline; the closing card starts by 1:48 and the
+  run ends by 1:54 whatever voice the browser uses (measured: 1:44 with a browser voice).
 
 Controls: **▶ PLAY** (one click also turns on sound) · **❚❚ Pause / ▶ Resume** · **↺ Restart** — or **Space** and **R**.
 Controls fade out while playing (hover the top-right corner to see them). A restart re-prepares the world behind the
-title card, so for the cleanest take reload the page and wait for ▶ PLAY.
+cold open, so for the cleanest take reload the page and wait for ▶ PLAY.
 
 ### Recording steps
 1. Use **Chrome** on a 1920×1080 screen (or larger), on the deployed site or `npm run dev`.

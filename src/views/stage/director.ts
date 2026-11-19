@@ -1,5 +1,5 @@
 // DEMO-ONLY: who speaks on /stage, and when.
-//   - The NARRATOR: pre-recorded public/narration/NN.mp3 when present, otherwise the best available
+//   - The NARRATOR: pre-recorded public/narration/NN.mp3|m4a|wav when present, otherwise the best available
 //     browser voice — a different one from the phones', slower and lower.
 //   - The PHONES: alerts the framed resident views ask the stage to say (see alertFeed.speak),
 //     ducked under the narrator. With mp3 narration they truly play quietly underneath. Browser
@@ -7,21 +7,22 @@
 //     one is trimmed to its first sentence.
 
 export const NARRATION: Record<number, string> = {
-  1: '2087. Two billion people live underground. The deeper you live, the faster the lights go out.',
-  2: "Mara lives on Level 38. Her grandfather, Ilan, on Level 12. Every day, one tap: I'm okay.",
-  3: "Level 38's power is failing. Lantern sees it coming, hours before it happens.",
-  4: 'The lights are gone. So is the network.',
-  5: "But Mara's message still gets through. Phone to phone. Neighbor to neighbor.",
-  6: 'Residents report twenty-two percent sick. The Directorate says six. Lantern shows both.',
-  7: "Power should go to Level 38's air. The Directorate sent it to the top. Now everyone can see.",
-  8: 'A warden, vouched for by her own neighbors, confirms the outbreak. An impostor tries. Rejected.',
+  1: 'Level 38. Two kilometers underground. Down here, the lights go out first.',
+  2: "This is Mara. Every morning she taps one button, so her grandfather, twenty-six levels up, knows she's okay.",
+  3: "Today, Lantern sees something the Directorate hasn't announced. Level 38's power is failing.",
+  4: 'The lights go out. The network goes with them.',
+  5: "But Mara's message still finds its way. Phone to phone, neighbor to neighbor, all the way to Ilan.",
+  6: 'And every check-in adds up. Twenty-two percent of Level 38 is sick. The Directorate says six.',
+  7: "The spare power belongs to Level 38's air pumps. The Directorate sent it to the top. Now everyone can see.",
+  8: 'A warden her neighbors vouched for confirms it. An impostor tries. Rejected.',
   9: 'No accounts. No admin. No off switch. Lantern works in the dark.',
 }
 
-/** How the narrator line is spoken by a browser voice ("38" read as a number, not "three eight"). */
-const SPOKEN: Record<number, string> = {
-  1: 'Twenty eighty-seven. Two billion people live underground. The deeper you live, the faster the lights go out.',
-}
+/** Optional spoken overrides (none needed for the current lines). */
+const SPOKEN: Record<number, string> = {}
+
+/** Recorded narration: public/narration/NN.<ext>, first match wins. Browsers play all three. */
+const EXTENSIONS = ['mp3', 'm4a', 'wav']
 
 type Kind = 'narrator' | 'phone'
 interface Item {
@@ -63,13 +64,18 @@ export class Director {
     if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => this.pickVoices()
     await Promise.all(
       Object.keys(NARRATION).map(async (k) => {
-        const url = `/narration/${k.padStart(2, '0')}.mp3`
-        try {
-          const r = await fetch(url, { method: 'HEAD' })
-          // A missing file falls back to the app page (HTML), so check it's really audio.
-          if (r.ok && (r.headers.get('content-type') ?? '').startsWith('audio')) this.mp3.set(Number(k), url)
-        } catch {
-          // no file: browser voice
+        for (const ext of EXTENSIONS) {
+          const url = `/narration/${k.padStart(2, '0')}.${ext}`
+          try {
+            const r = await fetch(url, { method: 'HEAD' })
+            // A missing file falls back to the app page (HTML), so check it's really audio.
+            if (r.ok && (r.headers.get('content-type') ?? '').startsWith('audio')) {
+              this.mp3.set(Number(k), url)
+              return
+            }
+          } catch {
+            // no file: try the next format, then the browser voice
+          }
         }
       }),
     )
