@@ -6,13 +6,22 @@
 //     voices can't overlap, so then a phone line waits for the narrator, plays quieter, and a long
 //     one is trimmed to its first sentence.
 
+/**
+ * Line 6, built from the figures on Level 38's board card ("22.0%", "6.4%"), so the narrator says
+ * exactly what the screen shows. NARRATION[6] is the seeded demo's values (what a recording says).
+ */
+export function truthLine(lantern: string, official: string): string {
+  const say = (v: string) => v.replace(/\.0%$/, '%').replace('%', ' percent')
+  return `And every check-in adds up. ${say(lantern)} of Level 38 is sick. The Directorate says ${say(official)}.`
+}
+
 export const NARRATION: Record<number, string> = {
   1: 'Level 38. Two kilometers underground. Down here, the lights go out first.',
   2: "This is Mara. Every morning she taps one button, so her grandfather, twenty-six levels up, knows she's okay.",
   3: "Today, Lantern sees something the Directorate hasn't announced. Level 38's power is failing.",
   4: 'The lights go out. The network goes with them.',
   5: "But Mara's message still finds its way. Phone to phone, neighbor to neighbor, all the way to Ilan.",
-  6: 'And every check-in adds up. Twenty-two percent of Level 38 is sick. The Directorate says six.',
+  6: truthLine('22.0%', '6.4%'),
   7: "The spare power belongs to Level 38's air pumps. The Directorate sent it to the top. Now everyone can see.",
   8: 'A warden her neighbors vouched for confirms it. An impostor tries. Rejected.',
   9: 'No accounts. No admin. No off switch. Lantern works in the dark.',
@@ -34,7 +43,7 @@ interface Item {
 
 interface StageLogs {
   __stageSpoken?: string[]
-  __stageNarration?: { line: number; via: 'mp3' | 'voice' | 'skipped'; at: number }[]
+  __stageNarration?: { line: number; via: 'mp3' | 'voice' | 'skipped'; at: number; text: string }[]
 }
 
 const words = (t: string) => t.split(/\s+/).filter(Boolean).length
@@ -122,16 +131,21 @@ export class Director {
     return this.busy !== null || this.queue.length > 0 || this.audios.size > 0
   }
 
-  /** Speak narrator line n. Resolves when it has finished (or would have, in tests). */
-  narrate(n: number): Promise<void> {
+  /**
+   * Speak narrator line n. Resolves when it has finished (or would have, in tests). `live`: the line's
+   * text built from what's on screen now; if it differs from the scripted line, a recording of the
+   * scripted line would say the wrong thing, so the browser voice says the live text instead.
+   */
+  narrate(n: number, live?: string): Promise<void> {
     const at = Math.round(performance.now() - this.startedAt)
+    const text = live ?? SPOKEN[n] ?? NARRATION[n]
     if (this.speed > 1) {
-      ;(this.logs.__stageNarration ??= []).push({ line: n, via: 'skipped', at })
+      ;(this.logs.__stageNarration ??= []).push({ line: n, via: 'skipped', at, text })
       return sleep(300)
     }
-    const url = this.mp3.get(n)
+    const url = live === undefined || live === NARRATION[n] ? this.mp3.get(n) : undefined
     if (url) {
-      ;(this.logs.__stageNarration ??= []).push({ line: n, via: 'mp3', at })
+      ;(this.logs.__stageNarration ??= []).push({ line: n, via: 'mp3', at, text })
       return new Promise((resolve) => {
         const a = new Audio(url)
         this.audios.add(a)
@@ -145,11 +159,11 @@ export class Director {
         void a.play().catch(end)
       })
     }
-    ;(this.logs.__stageNarration ??= []).push({ line: n, via: 'voice', at })
+    ;(this.logs.__stageNarration ??= []).push({ line: n, via: 'voice', at, text })
     return new Promise((done) => {
       // Narrator lines go ahead of any waiting phone lines.
       const i = this.queue.findIndex((q) => q.kind === 'phone')
-      const item: Item = { kind: 'narrator', text: SPOKEN[n] ?? NARRATION[n], volume: 1, done }
+      const item: Item = { kind: 'narrator', text, volume: 1, done }
       if (i < 0) this.queue.push(item)
       else this.queue.splice(i, 0, item)
       this.pump()
@@ -175,7 +189,7 @@ export class Director {
     this.pump()
   }
 
-  /** Hold phone speech (e.g. during the blackout's second of silence); release plays it. */
+  /** Hold phone speech (e.g. until after the blackout's second of silence); release plays it. The narrator still speaks. */
   hold(on: boolean) {
     this.held = on
     if (!on) {
@@ -193,11 +207,15 @@ export class Director {
   }
 
   private pump() {
-    if (this.busy || this.held || !this.queue.length || !('speechSynthesis' in window)) {
-      if (!('speechSynthesis' in window)) this.queue.splice(0).forEach((i) => i.done())
+    if (!('speechSynthesis' in window)) {
+      this.queue.splice(0).forEach((i) => i.done())
       return
     }
-    const next = this.queue.shift()!
+    if (this.busy || !this.queue.length) return
+    // While phones are held, only the narrator speaks.
+    const i = this.held ? this.queue.findIndex((q) => q.kind === 'narrator') : 0
+    if (i < 0) return
+    const next = this.queue.splice(i, 1)[0]
     this.busy = next.kind
     this.utter(next, () => {
       this.busy = null

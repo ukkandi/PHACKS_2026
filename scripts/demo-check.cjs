@@ -186,7 +186,9 @@ const has = (text, needle) => text.toLowerCase().includes(needle.toLowerCase())
   const stageLog = (await st.evaluate(() => window.__stageLog)) ?? []
   const stageFails = stageLog.filter((l) => !l.ok).map((l) => l.name)
   check('Step 11: /stage autopilot finishes', await st.evaluate(() => window.__stageDone === true))
-  check(`Step 11: every autopilot beat checks out (${stageLog.length} checks)`, stageLog.length >= 13 && stageFails.length === 0, stageFails.join('; '))
+  check(`Step 11: every autopilot beat checks out (${stageLog.length} checks)`, stageLog.length >= 14 && stageFails.length === 0, stageFails.join('; '))
+  const truth = stageLog.find((l) => /caption's L38 percentages/.test(l.name))
+  check("Step 11: THE TRUTH caption's L38 percentages equal the L38 card on screen", !!truth?.ok, truth?.detail)
   const stageSpoken = (await st.evaluate(() => window.__stageSpoken)) ?? []
   check('Step 11: stage speaks the blackout and the message', stageSpoken.some((t) => t.startsWith('The power is out on Level 38')) && stageSpoken.includes('Message from Mara. Power is out here.'))
   check('Step 11: closing card shown', has(await txt(st.locator('body')), 'They can never turn it off.'))
