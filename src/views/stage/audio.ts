@@ -98,6 +98,11 @@ export class StageAudio {
     d.gain.gain.setTargetAtTime(0.03, this.now, 1.2)
   }
 
+  /** Duck everything we generate (drone, alarm) while the narrator speaks. */
+  duck(on: boolean) {
+    this.master?.gain.setTargetAtTime(on ? 0.22 : 0.9, this.now, on ? 0.08 : 0.4) // −12 dB under the narrator
+  }
+
   fadeOut(ms: number) {
     this.drone?.gain.gain.setTargetAtTime(0, this.now, ms / 1000 / 3)
   }

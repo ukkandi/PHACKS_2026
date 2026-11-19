@@ -203,12 +203,19 @@ export async function runShow(api: StageApi, clock: Clock, prepared: boolean) {
       await raw(Math.max(150, 150 / clock.speed))
       while (clock.paused) await raw(100)
     }
-    const chapter = async (n: number, title: string) => {
+    const cards = () => ((window as unknown as { __stageCards?: { card: string; start: number; end?: number }[] }).__stageCards ??= [])
+    /** A chapter card is silent: it waits for the narrator to finish (bounded), then holds 1.5 s. */
+    const chapter = async (n: number, title: string, maxWait = 6_000) => {
+      await until(() => !api.director.narrating(), elapsed() + maxWait * Math.min(1, clock.speed))
+      await sleep(300) // a breath before the card
       api.point(null, null)
       api.setBeat('', '')
       api.setCard({ kind: 'chapter', n, title })
+      const entry: { card: string; start: number; end?: number } = { card: `${n} · ${title}`, start: api.director.now() }
+      cards().push(entry)
       await sleep(CHAPTER_CARD_MS)
       api.setCard(null)
+      entry.end = api.director.now()
     }
     const ilanFamily = () => section(d('ilan'), /^Family/)
 

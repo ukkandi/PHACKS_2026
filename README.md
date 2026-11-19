@@ -66,17 +66,19 @@ around the ring is softly dimmed. Captions are ≤ 8 words.
 5. **4 · THE TRUST** → "✓ confirmed by warden W-38-WAR" (vouched by neighbours), held ~4 s → the impostor's confirmation, **"unverified warden, rejected"**, held ~4 s.
 6. Closing card (5 s).
 
-- **Narrator:** nine lines, spoken with the best available browser voice (a different one from the phones,
-  slower and lower). To use recorded narration instead, drop files at `public/narration/01.mp3` … `09.mp3`
-  (`.m4a` and `.wav` work too) — any line with a file plays the file. Line 6 is said from the live board numbers;
-  its file is used only when those match the script (22.0% and 6.4% in the seeded demo), otherwise the voice says it. Phone speech is ducked under the narrator
-  (with recorded narration it plays quietly underneath; with browser voices, which can't overlap, it follows the
-  narrator line, quieter, trimmed to its first sentence when long).
+- **Narrator:** recorded narration ships in `public/narration/01.mp3` … `09.mp3` (58 s in all; `.m4a` and `.wav`
+  work too). A line without a file is spoken with the best available browser voice (a different one from the
+  phones, slower and lower). Line 6 is checked against the live board: its file plays when the board shows the
+  scripted 22.0% / 6.4% (it does in the seeded demo), otherwise the voice says the live numbers.
+- **Nothing talks over the narrator:** each line plays to the end, with a short breath before the next; chapter
+  cards wait for the line to finish and are silent; a phone's spoken alert waits for the narrator (trimmed to its
+  first sentence), and a line waits for a phone to finish its sentence. The drone ducks 12 dB under every line,
+  so even at peak tension it stays ~10 dB below the voice.
 - **Sound design** (generated with Web Audio, no files): a low drone that rises in pitch and volume through the
   countdown, cut to silence at the blackout, an alarm, then a quieter drone.
 - **Captions** for every beat, so the video also works muted.
 - **Timing:** each beat is paced by its narrator line but has a hard deadline; the closing card starts by 1:48 and the
-  run ends by 1:54 whatever voice the browser uses (measured: 1:31 with a browser voice).
+  run ends by 1:54 whatever voice the browser uses (measured: 1:35 with the recorded narration).
 
 Controls: **▶ PLAY** (one click also turns on sound) · **❚❚ Pause / ▶ Resume** · **↺ Restart** — or **Space** and **R**.
 Controls fade out while playing (hover the top-right corner to see them). A restart re-prepares the world behind the

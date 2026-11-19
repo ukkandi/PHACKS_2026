@@ -61,6 +61,7 @@ interface StageWindow extends Window {
   __stageFocus?: Focus
   __stagePointer?: string
   __stageZoom?: number
+  __stageCards?: unknown[]
 }
 
 function useFit() {
@@ -102,6 +103,7 @@ export default function StageView() {
     director.current.speed = speed
     w.__stageSpoken = []
     w.__lanternStage = { speak: (text) => director.current.phone(text) }
+    director.current.onNarrating = (on) => audio.current.duck(on)
     return () => {
       delete w.__lanternStage
     }
@@ -261,6 +263,8 @@ export default function StageView() {
     w.__stageLog = []
     w.__stageSpoken = []
     w.__stageNarration = []
+    w.__stageCards = []
+    ;(w as { __stagePhoneLog?: unknown[] }).__stagePhoneLog = []
     w.__stageDone = false
     w.__stageVoices = { ...director.current.voiceNames, recordedLines: director.current.recordedLines }
     const wasPrepared = prepared.current

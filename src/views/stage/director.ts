@@ -1,10 +1,9 @@
 // DEMO-ONLY: who speaks on /stage, and when.
 //   - The NARRATOR: pre-recorded public/narration/NN.mp3|m4a|wav when present, otherwise the best available
 //     browser voice — a different one from the phones', slower and lower.
-//   - The PHONES: alerts the framed resident views ask the stage to say (see alertFeed.speak),
-//     ducked under the narrator. With mp3 narration they truly play quietly underneath. Browser
-//     voices can't overlap, so then a phone line waits for the narrator, plays quieter, and a long
-//     one is trimmed to its first sentence.
+//   - The PHONES: alerts the framed resident views ask the stage to say (see alertFeed.speak).
+//     They never talk over the narrator: a phone line waits for the narrator's line to end, and a
+//     long one is then trimmed to its first sentence. The stage also ducks its drone under him.
 
 /**
  * Line 6, built from the figures on Level 38's board card ("22.0%", "6.4%"), so the narrator says
@@ -43,8 +42,12 @@ interface Item {
 
 interface StageLogs {
   __stageSpoken?: string[]
-  __stageNarration?: { line: number; via: 'mp3' | 'voice' | 'skipped'; at: number; text: string }[]
+  /** at: when asked; start/end: when the sound really started and finished (ms from PLAY). */
+  __stageNarration?: { line: number; via: 'mp3' | 'voice' | 'skipped'; at: number; text: string; start?: number; end?: number }[]
 }
+
+/** Minimum silence between the end of one recorded line and the next. */
+const LINE_GAP_MS = 450
 
 const words = (t: string) => t.split(/\s+/).filter(Boolean).length
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
@@ -60,8 +63,18 @@ export class Director {
   private heldLines: string[] = []
   private audios = new Set<HTMLAudioElement>()
   private startedAt = 0
+  private lastEnd = -Infinity
   /** >1 in tests: nothing is spoken, lines just pass quickly. */
   speed = 1
+  /** Told when the narrator starts and stops (the stage ducks its sound under it). */
+  onNarrating: (on: boolean) => void = () => {}
+  /** Narrator volume (recorded files): full, so it sits clearly above the drone and the phones. */
+  narratorVolume = 1
+
+  /** ms since PLAY. */
+  now(): number {
+    return Math.round(performance.now() - this.startedAt)
+  }
 
   private get logs(): StageLogs {
     return window as unknown as StageLogs
@@ -116,6 +129,7 @@ export class Director {
   /** Called inside the PLAY click: unlock speech for this page. */
   unlock() {
     this.startedAt = performance.now()
+    this.lastEnd = -Infinity
     if (!('speechSynthesis' in window)) return
     speechSynthesis.cancel()
     const u = new SpeechSynthesisUtterance(' ')
@@ -123,7 +137,7 @@ export class Director {
     speechSynthesis.speak(u)
   }
 
-  private narrating(): boolean {
+  narrating(): boolean {
     return this.audios.size > 0 || this.busy === 'narrator' || this.queue.some((i) => i.kind === 'narrator')
   }
 
@@ -137,7 +151,7 @@ export class Director {
    * scripted line would say the wrong thing, so the browser voice says the live text instead.
    */
   narrate(n: number, live?: string): Promise<void> {
-    const at = Math.round(performance.now() - this.startedAt)
+    const at = this.now()
     const text = live ?? SPOKEN[n] ?? NARRATION[n]
     if (this.speed > 1) {
       ;(this.logs.__stageNarration ??= []).push({ line: n, via: 'skipped', at, text })
@@ -145,22 +159,44 @@ export class Director {
     }
     const url = live === undefined || live === NARRATION[n] ? this.mp3.get(n) : undefined
     if (url) {
-      ;(this.logs.__stageNarration ??= []).push({ line: n, via: 'mp3', at, text })
+      const entry: NonNullable<StageLogs['__stageNarration']>[number] = { line: n, via: 'mp3', at, text }
+      ;(this.logs.__stageNarration ??= []).push(entry)
       return new Promise((resolve) => {
         const a = new Audio(url)
+        a.volume = this.narratorVolume
         this.audios.add(a)
+        this.onNarrating(true)
+        a.onplaying = () => (entry.start ??= this.now())
+        // Let a phone finish its sentence, then a breath, then the line.
+        const go = (): void => {
+          if (this.busy === 'phone') return void setTimeout(go, 80)
+          const wait = Math.max(0, this.lastEnd + LINE_GAP_MS - this.now())
+          setTimeout(() => void a.play().catch(end), wait)
+        }
+        let ended = false
         const end = () => {
+          if (ended) return
+          ended = true
+          entry.end = this.now()
+          this.lastEnd = entry.end
           this.audios.delete(a)
+          if (!this.narrating()) this.onNarrating(false)
           resolve()
           this.pump()
         }
         a.onended = end
         a.onerror = end
-        void a.play().catch(end)
+        go()
       })
     }
-    ;(this.logs.__stageNarration ??= []).push({ line: n, via: 'voice', at, text })
-    return new Promise((done) => {
+    const entry: NonNullable<StageLogs['__stageNarration']>[number] = { line: n, via: 'voice', at, text }
+    ;(this.logs.__stageNarration ??= []).push(entry)
+    this.onNarrating(true)
+    return new Promise((resolve) => {
+      const done = () => {
+        entry.end = this.now()
+        resolve()
+      }
       // Narrator lines go ahead of any waiting phone lines.
       const i = this.queue.findIndex((q) => q.kind === 'phone')
       const item: Item = { kind: 'narrator', text, volume: 1, done }
@@ -178,14 +214,9 @@ export class Director {
       this.heldLines.push(text)
       return
     }
-    if (this.audios.size > 0) {
-      // Recorded narrator playing: the phone speaks right away, ducked underneath it.
-      this.utter({ kind: 'phone', text, volume: 0.35, done: () => {} })
-      return
-    }
     const ducked = this.narrating()
     const line = ducked && text.length > 60 ? (text.match(/^.*?[.!?](\s|$)/)?.[0].trim() ?? text) : text
-    this.queue.push({ kind: 'phone', text: line, volume: ducked ? 0.45 : 0.8, done: () => {} })
+    this.queue.push({ kind: 'phone', text: line, volume: ducked ? 0.6 : 0.8, done: () => {} })
     this.pump()
   }
 
@@ -200,7 +231,7 @@ export class Director {
         if (this.speed > 1) return
         const ducked = this.narrating()
         const line = ducked && t.length > 60 ? (t.match(/^.*?[.!?](\s|$)/)?.[0].trim() ?? t) : t
-        this.queue.push({ kind: 'phone', text: line, volume: ducked ? 0.45 : 0.8, done: () => {} })
+        this.queue.push({ kind: 'phone', text: line, volume: ducked ? 0.6 : 0.8, done: () => {} })
       })
       this.pump()
     }
@@ -211,7 +242,8 @@ export class Director {
       this.queue.splice(0).forEach((i) => i.done())
       return
     }
-    if (this.busy || !this.queue.length) return
+    // Nothing talks over a recorded narrator line: queued speech waits for it to end.
+    if (this.busy || !this.queue.length || this.audios.size > 0) return
     // While phones are held, only the narrator speaks.
     const i = this.held ? this.queue.findIndex((q) => q.kind === 'narrator') : 0
     if (i < 0) return
@@ -219,6 +251,7 @@ export class Director {
     this.busy = next.kind
     this.utter(next, () => {
       this.busy = null
+      if (!this.narrating()) this.onNarrating(false)
       this.pump()
     })
   }
@@ -237,9 +270,15 @@ export class Director {
     }
     u.volume = item.volume
     let finished = false
+    const log = item.kind === 'phone' ? { text: item.text, start: this.now(), end: 0 } : null
+    if (log) ((window as unknown as { __stagePhoneLog?: (typeof log)[] }).__stagePhoneLog ??= []).push(log)
     const finish = () => {
       if (finished) return
       finished = true
+      if (log) {
+        log.end = this.now()
+        this.lastEnd = Math.max(this.lastEnd, log.end)
+      }
       item.done()
       after?.()
     }
