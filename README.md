@@ -3,8 +3,8 @@
 **A community-owned wellbeing network for the Hollow.**
 Patriot HackFest Fall 2026 · *Life Underground* track · solo project by Uday Kandi
 
-- 🎬 **Demo video (2:35):** [ADD YOUTUBE LINK]
-- 🌐 **Try it live:** [ADD NETLIFY LINK] — open **`/stage`** and press ▶ PLAY for the hands-free demo, or **`/`** to click through it yourself
+- 🎬 **Demo video (2:35):** [https://www.youtube.com/watch?v=ZzgAEOrOCeg]
+- 🌐 **Try it live:** [https://lantern-hollow-phacks2026.netlify.app/] — open **`/stage`** and press ▶ PLAY for the hands-free demo, or **`/`** to click through it yourself
 
 > The Hollow is fictional, so the world (power, air, water, illness) is simulated. Everything Lantern does with that data is real code running in your browser.
 
