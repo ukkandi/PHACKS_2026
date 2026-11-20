@@ -1,4 +1,4 @@
-// Full demo flow, exactly as scripted in README.md. Each step prints PASS/FAIL.
+// Full demo flow, exactly as scripted in docs/DEVELOPER.md. Each step prints PASS/FAIL.
 // Usage: npm run dev (in another terminal), then: node scripts/demo-check.cjs
 // Needs Playwright with Chromium available (not a project dependency on purpose).
 const { chromium } = require('playwright')
