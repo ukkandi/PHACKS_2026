@@ -1,4 +1,4 @@
-// DEMO-ONLY: /stage — the director's cut. A hands-free, 16:9 autopilot of the demo (≤ 1:55) with one
+// DEMO-ONLY: /stage — the director's cut. A hands-free, 16:9 autopilot of the demo (≤ 3:00) with one
 // focus at a time: the camera shows one panel, an amber ring points at the one element that matters.
 // Real app pages run in same-origin frames (so the phone-to-phone mesh works as with tabs); the
 // script in ./show.ts clicks their buttons. One click on PLAY unlocks sound.
@@ -25,17 +25,29 @@ const SRC: Record<FrameName, string> = {
   board: '/ledger?device=board',
   sim: '/sim',
   warden: '/warden?level=38&device=warden38',
+  terminal: '/terminal?level=38',
 }
 
-const CHAPTERS = ['The warning', 'The dark', 'The truth', 'The trust']
+const CHAPTERS = ['The warning', 'The dark', 'The truth', 'No one left behind', 'The trust']
+
+/** Line 11's card: one row per sentence. */
+const HOW = [
+  { glyph: '●', text: 'One check-in a day' },
+  { glyph: '▣', text: 'It stays on your phone' },
+  { glyph: '⇄', text: 'It travels neighbor to neighbor' },
+  { glyph: '◆', text: 'Only anonymous counts are shared' },
+]
+type Wide = 'board' | 'terminal' | 'warden'
+const CLOSING = ['No accounts to seize.', 'No admin to switch it off.', 'Lantern keeps the Hollow connected, even in the dark.']
 
 type Phase = 'preparing' | 'ready' | 'playing' | 'paused' | 'done'
 type Pose = { x: number; y: number; s: number; o: number }
 
 /** Where each panel sits for each camera focus: one prominent, the rest dimmed or away. */
-function pose(panel: 'mara' | 'ilan' | 'board', focus: Focus): Pose {
+function pose(panel: 'mara' | 'ilan' | Wide, focus: Focus): Pose {
   const center = { x: (W - PHONE_OUT_W) / 2, y: 70, s: 1, o: 1 }
-  if (panel === 'board') return focus === 'board' ? { x: (W - BOARD_OUT_W) / 2, y: 66, s: 1, o: 1 } : { x: (W - BOARD_OUT_W) / 2, y: 180, s: 0.92, o: 0 }
+  if (panel === 'board' || panel === 'terminal' || panel === 'warden')
+    return focus === panel ? { x: (W - BOARD_OUT_W) / 2, y: 66, s: 1, o: 1 } : { x: (W - BOARD_OUT_W) / 2, y: 180, s: 0.92, o: 0 }
   if (focus === panel) return center
   const dimLeft = { x: 140, y: 170, s: 0.8, o: 0.15 }
   const dimRight = { x: W - 140 - PHONE_OUT_W * 0.8, y: 170, s: 0.8, o: 0.15 }
@@ -346,7 +358,7 @@ export default function StageView() {
 
   const chapterIdx = CHAPTERS.indexOf(beat.chapter)
 
-  const panel = (n: 'mara' | 'ilan' | 'board', size: { w: number; h: number; scale: number }, label: string) => (
+  const panel = (n: 'mara' | 'ilan' | Wide, size: { w: number; h: number; scale: number }, label: string) => (
     <figure className="absolute top-0 left-0 m-0" style={poseStyle(pose(n, focus))} aria-hidden={focus !== n}>
       <figcaption className="mb-2 font-mono text-lg font-bold tracking-[0.15em] text-lamp uppercase">{label}</figcaption>
       <div className="border-4 border-hollow-700 bg-black p-2">
@@ -404,6 +416,8 @@ export default function StageView() {
         {/* The three panels; the camera moves them (one prominent at a time). */}
         <div ref={worldRef} className="absolute inset-0" style={{ transformOrigin: 'top left' }}>
           {panel('board', BOARD, 'Public board · all levels')}
+          {panel('terminal', BOARD, 'Level 38 · shared terminal')}
+          {panel('warden', BOARD, 'Warden W-38-WAR · Level 38')}
           {panel('mara', PHONE, 'Mara · Level 38')}
           {panel('ilan', PHONE, 'Ilan · Level 12')}
         </div>
@@ -463,9 +477,9 @@ export default function StageView() {
           )}
         </section>
 
-        {/* Hidden helpers: the World Simulator (drives the world + level phones) and the vouched warden. */}
+        {/* Hidden helper: the World Simulator (drives the world + level phones). */}
         <div aria-hidden className="pointer-events-none absolute top-0 left-0 opacity-0" style={{ width: 1280, height: 800, zIndex: -1 }}>
-          {(['sim', 'warden'] as FrameName[]).map((n) => (
+          {(['sim'] as FrameName[]).map((n) => (
             <iframe
               key={n}
               title={n}
@@ -489,18 +503,26 @@ export default function StageView() {
             </div>
           </div>
         )}
+        {card?.kind === 'how' && (
+          <div className="absolute inset-0 z-40 flex flex-col justify-center gap-6 bg-hollow-950 px-40">
+            <div className="mb-4 font-mono text-2xl font-bold tracking-[0.25em] text-lamp uppercase">How Lantern works</div>
+            {HOW.slice(0, card.step).map((row, i) => (
+              <div key={row.text} className="stage-fade-in flex items-center gap-10">
+                <span className="w-20 shrink-0 text-center font-mono text-[64px] leading-none text-lamp">{row.glyph}</span>
+                <span className="font-mono text-3xl text-hollow-500">{i + 1}</span>
+                <span className="stage-display text-[80px] leading-none font-bold text-cream">{row.text}</span>
+              </div>
+            ))}
+          </div>
+        )}
         {card?.kind === 'closing' && (
           <div className="absolute inset-0 z-40 flex flex-col justify-center gap-10 bg-hollow-950 px-40">
-            {['It works without them.', 'It works better with them.', 'They can never turn it off.'].map((line, i) => (
-              <p
-                key={line}
-                className={`stage-fade-in stage-display m-0 text-[96px] leading-none font-bold ${i === 2 ? 'text-lamp' : 'text-cream'}`}
-                style={{ animationDelay: `${i * 1.1}s` }}
-              >
+            {CLOSING.slice(0, card.step).map((line, i) => (
+              <p key={line} className={`stage-fade-in stage-display m-0 text-[92px] leading-none font-bold ${i === 2 ? 'text-lamp' : 'text-cream'}`}>
                 {line}
               </p>
             ))}
-            <div className="stage-fade-in mt-6 font-mono text-2xl tracking-[0.25em] text-hollow-300 uppercase" style={{ animationDelay: '3.3s' }}>
+            <div className="stage-fade-in mt-6 font-mono text-2xl tracking-[0.25em] text-hollow-300 uppercase" style={{ animationDelay: '1.5s' }}>
               Lantern · community-owned · offline-first
             </div>
           </div>

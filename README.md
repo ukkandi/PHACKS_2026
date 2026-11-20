@@ -48,28 +48,37 @@ right now ("Works offline", "Network down · through neighbors' phones · 6 near
 
 ## Autopilot recording (`/stage`)
 
-A hands-free, 16:9 cut of the demo for the video — **at most 1:55** — demo tooling, not part of Lantern. One page holds
-Mara's and Ilan's phones and the public board as real, live app pages (same-origin frames, so the phones still pass
-messages to each other); a hidden World Simulator and the vouched warden run alongside. When the page opens it
-**prepares** a fresh demo (a few seconds), then shows **▶ PLAY**.
+A hands-free, 16:9 cut of the demo for the video — **target ≤ 3:00, hard stop before 3:10** — demo tooling, not part
+of Lantern. One page holds Mara's and Ilan's phones, the public board, the Level 38 shared terminal and the vouched
+warden's phone as real, live app pages (same-origin frames, so the phones still pass messages to each other); a hidden
+World Simulator runs alongside. When the page opens it **prepares** a fresh demo (a few seconds), then shows **▶ PLAY**.
 
 It's a **director's cut: one story, one focus at a time.** The camera shows one panel large and centred (the others
-fade to ~15% or slide away, 600 ms moves) and an **amber ring ▼** points at the one thing that matters: Mara's
-I'M OKAY, the blackout countdown, the message Ilan receives, the L38 card on the board, the warden badge, the
-impostor's "rejected" line. On those details the camera **zooms in ~2–2.5×** (as far as it fits) and everything
-around the ring is softly dimmed. Captions are ≤ 8 words.
+fade to ~15% or slide away, 600 ms moves) and an **amber ring ▼** points at the one thing that matters; on details the
+camera **zooms in ~2–2.5×** (as far as it fits) and everything around the ring is softly dimmed. Captions follow the
+narrator sentence by sentence, ≤ 8 words each.
 
-1. **Cold open** (black) → Mara's phone alone: she taps I'M OKAY → Ilan's phone briefly shows *Mara · okay*.
-2. **1 · THE WARNING** (1.5 s chapter card) → Mara's warning, then a **"▲ L38 · BLACKOUT IN ~12H" countdown** that runs down in ~8 s (the simulated clock is stepped faster while it's on screen).
-3. **2 · THE DARK** → one second of black and silence, an alarm, Mara's dark screen speaks; she sends **POWER OUT** → cut to Ilan receiving it, passed along by a neighbour's phone, read aloud.
-4. **3 · THE TRUTH** → the outbreak panel zoomed to Level 38's card: Lantern 22.0% vs the Directorate's 6.4%. The caption and the narrator's line are built from the numbers on that card at that moment (a stage check verifies they match) → the power allocation: Level 38 air pumps vs Levels 1–3.
-5. **4 · THE TRUST** → "✓ confirmed by warden W-38-WAR" (vouched by neighbours), held ~4 s → the impostor's confirmation, **"unverified warden, rejected"**, held ~4 s.
-6. Closing card (5 s).
+| Line | Beat |
+|---|---|
+| 01 | Cold open (black). |
+| 02 | Mara's phone: she taps **I'M OKAY** → Ilan's phone shows *Mara · okay*. |
+| 03 | **1 · THE WARNING** → Mara's **power meter** (load climbing) → the warning (hours + confidence) → a **"▲ L38 · BLACKOUT IN ~12H" countdown** that runs down in ~8 s. |
+| 04 | **2 · THE DARK** → one second of black and silence, an alarm, Mara's dark screen. |
+| 05 | Her phone speaks the alert → zoom on **◉ HOLD TO SPEAK** → HEARD "power out" → **◆ POWER OUT** → **CONFIRM · SEND**. |
+| 06 | The message reaches Ilan, passed along by a neighbour's phone; his phone reads it aloud. |
+| 07 | **3 · THE TRUTH** → Level 38's outbreak card: **22.0%** vs the Directorate's **6.4%**. Caption and narration are built from the numbers on that card (a stage check verifies they match). |
+| 08 | The power allocation: priorities **voted by 40 of 40 levels** → Level 38 air pumps → the Directorate's Levels 1–3. |
+| 09 | **4 · NO ONE LEFT BEHIND** → the L38 terminal checks in unit 38-207 by unit number → the warden checks in Mr. Brandt (no phone). |
+| 10 | **5 · THE TRUST** → the warden, vouched by 3 neighbours, confirms the outbreak (badge held ~4 s) → an impostor posing as W-38-WAR **disputes** it: **"W-38-WAR DISPUTES OUTBREAK · UNVERIFIED WARDEN, REJECTED"** (held ~4 s); the outbreak stays confirmed. |
+| 11 | How it works: check in → stays on your phone → neighbor to neighbor → only anonymous counts shared (one row per sentence). |
+| 12 | Closing card. |
 
-- **Narrator:** recorded narration ships in `public/narration/01.mp3` … `09.mp3` (58 s in all; `.m4a` and `.wav`
+- **Narrator:** recorded narration ships in `public/narration/01.mp3` … `12.mp3` (99.5 s in all; `.m4a` and `.wav`
   work too). A line without a file is spoken with the best available browser voice (a different one from the
-  phones, slower and lower). Line 6 is checked against the live board: its file plays when the board shows the
+  phones, slower and lower). Line 07 is checked against the live board: its file plays when the board shows the
   scripted 22.0% / 6.4% (it does in the seeded demo), otherwise the voice says the live numbers.
+- **Voice in the dark (SIMULATED recognition):** the stage sets the app's speech-recognition test hook on Mara's
+  phone so it "hears" *power out*; everything after that (HEARD, the action, CONFIRM · SEND, the message) is the app.
 - **Nothing talks over the narrator:** each line plays to the end, with a short breath before the next; chapter
   cards wait for the line to finish and are silent; a phone's spoken alert waits for the narrator (trimmed to its
   first sentence), and a line waits for a phone to finish its sentence. The drone ducks 12 dB under every line,
@@ -77,8 +86,9 @@ around the ring is softly dimmed. Captions are ≤ 8 words.
 - **Sound design** (generated with Web Audio, no files): a low drone that rises in pitch and volume through the
   countdown, cut to silence at the blackout, an alarm, then a quieter drone.
 - **Captions** for every beat, so the video also works muted.
-- **Timing:** each beat is paced by its narrator line but has a hard deadline; the closing card starts by 1:48 and the
-  run ends by 1:54 whatever voice the browser uses (measured: 1:35 with the recorded narration).
+- **Timing:** visuals are cued to the sentences inside each recorded line; every beat also has a hard deadline, so
+  the closing card starts by 3:03 and the run ends by 3:09 whatever voice the browser uses (measured: 2:35 with the
+  recorded narration).
 
 Controls: **▶ PLAY** (one click also turns on sound) · **❚❚ Pause / ▶ Resume** · **↺ Restart** — or **Space** and **R**.
 Controls fade out while playing (hover the top-right corner to see them). A restart re-prepares the world behind the
@@ -92,7 +102,7 @@ cold open, so for the cleanest take reload the page and wait for ▶ PLAY.
 5. Turn system volume up and make sure your recorder captures **system audio** (OBS: Display Capture + Desktop Audio;
    QuickTime can't capture system audio).
 6. Start recording, click **▶ PLAY** once, and don't touch the mouse again.
-7. Stop recording when the closing card's last line has been read (under 1:55 after the click). Trim the click off
+7. Stop recording when the closing card's last line has been read (about 2:35 after the click, always under 3:10). Trim the click off
    the start.
 
 If anything goes wrong mid-run, reload the page and start again from step 3.
@@ -162,8 +172,8 @@ Voice recognition in Chrome needs the microphone allowed and an internet connect
 - **Warden:** on **MR. BRANDT** tap **CHECK IN** → **SEND**. He now shows **● LAST … VIA WARDEN**.
 - **Warden:** in **VERIFY LEDGER · L38**, tap **CONFIRM OUTBREAK**.
 - **Show Ledger:** Level 38 in OUTBREAK WATCH now carries **✓ CONFIRMED BY WARDEN W-38-WAR**. Click **L38** on the board: "Sources: N via level phones, 1 via terminal, 1 via warden".
-- **Impostor:** **World Simulator** (Target level still **Level 38**) → **Impostor warden confirms outbreak on L38**. It claims the badge W-38-WAR and signs correctly — but with a key no L38 resident vouched for.
-- **Show Ledger → HELD BACK:** **▲ L38 · W-38-WAR CONFIRMS OUTBREAK · UNVERIFIED WARDEN, REJECTED** (tap **?**: the key fingerprint and why). The genuine ✓ confirmation is unaffected.
+- **Impostor:** **World Simulator** (Target level still **Level 38**) → **Impostor warden disputes outbreak on L38**. It poses as W-38-WAR to *deny* the outbreak and signs correctly — but with a key no L38 resident vouched for.
+- **Show Ledger → HELD BACK:** **▲ L38 · W-38-WAR DISPUTES OUTBREAK · UNVERIFIED WARDEN, REJECTED** (tap **?**: the key fingerprint and why). The outbreak stays confirmed: the genuine ✓ confirmation is unaffected.
 
 ### 7. Trust: a fake flood is held back
 - **World Simulator:** set Target level to **Level 5** and click **Rogue device: inject 300 fake reports on L5**.
@@ -197,7 +207,7 @@ Simulated (marked `// SIMULATED:` in code):
 - **The radio layer:** all tabs share one BroadcastChannel. Links are allowed if both ends have the Directorate net, or if devices are within 2 levels.
 - **Demo rounds book** (`src/sim/demoRounds.ts`): Mrs. Okafor, Mr. Brandt and the others are held by the World Simulator's L38 level phone and handed over — encrypted — only to a warden key once it's active.
 - **Demo pre-vouch** (`src/lib/demoVouch.ts`): Mara, Teo and two simulated L38 residents on the level phone vouch automatically for the first W-38-WAR key they hear. In real use a resident taps **VOUCH** after checking the key on the warden's screen in person.
-- **Rogue device and impostor warden:** the fake-report injection and the impostor confirmation are simulated attacks.
+- **Rogue device and impostor warden:** the fake-report injection and the impostor's dispute are simulated attacks.
 
 Known limits of vouching (honest list): nothing stops someone with many devices from vouching many times (no Sybil resistance beyond "3 distinct device keys from that level"); there is no revocation yet; and a device trusts the level a voucher *claims* to be on.
 - **The levels' ballots:** each level phone casts a deterministic simulated ballot once per simulated day (`src/sim/votes.ts`).

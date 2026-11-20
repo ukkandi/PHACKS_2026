@@ -23,7 +23,7 @@ const STEPS = [
   'Simulator: Symptom spike, Step +1h ×8 → ledger: L38 OUTBREAK vs lower OFFICIAL figure.',
   'Ledger: Power reserve — Lantern: L38 AIR PUMPS; Directorate: most to L1–3. Priorities voted by 40 levels.',
   'Terminal: 2 2 1 → NEXT → I NEED HELP → LOW → UNDER 5 H → BREATHING → NEXT → YES. Warden: Mrs. Okafor first; CHECK IN Mr. Brandt → SEND; CONFIRM OUTBREAK.',
-  'Simulator (L38): Impostor warden confirms outbreak → ledger HELD BACK: unverified warden, rejected.',
+  'Simulator (L38): Impostor warden disputes outbreak → ledger HELD BACK: W-38-WAR disputes outbreak · unverified warden, rejected; the outbreak stays confirmed.',
   'Simulator: target Level 5 → Rogue device → ledger HELD BACK.',
   'Directorate tab: same board, read-only.',
 ]
@@ -83,7 +83,7 @@ export function DemoLauncher() {
           className="flex min-h-14 items-center justify-between border-2 border-lamp px-3 font-mono text-sm font-bold tracking-wider text-lamp uppercase hover:bg-hollow-800"
         >
           <span>▶ Autopilot · hands-free recording</span>
-          <span className="text-xs font-normal text-hollow-300">/stage · 16:9 · ≤ 1:55</span>
+          <span className="text-xs font-normal text-hollow-300">/stage · 16:9 · ≤ 3:00</span>
         </a>
 
         <div className="flex items-center justify-between border-2 border-hollow-700 px-3 py-2">

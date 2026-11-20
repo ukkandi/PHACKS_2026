@@ -4,14 +4,20 @@
 //
 // Timing: the narrator paces each beat, but every beat also has a hard deadline (measured from PLAY,
 // excluding pauses). The closing card starts no later than CAP.closing and the run always ends by
-// CAP.end — under the 2:00 submission limit whatever voice the browser uses.
+// CAP.end — under the 3:10 submission limit whatever voice the browser uses (the target is ≤ 3:00).
 import { resetDemo } from '../../lib/demoReset'
 import type { StageAudio } from './audio'
 import { truthLine, type Director } from './director'
 
-export type FrameName = 'mara' | 'ilan' | 'board' | 'sim' | 'warden'
-export type Focus = 'mara' | 'ilan' | 'board' | 'none'
-export type Card = { kind: 'cold' } | { kind: 'chapter'; n: number; title: string } | { kind: 'closing' } | null
+export type FrameName = 'mara' | 'ilan' | 'board' | 'sim' | 'warden' | 'terminal'
+export type Focus = 'mara' | 'ilan' | 'board' | 'terminal' | 'warden' | 'none'
+/** Full-screen cards. 'how' and 'closing' reveal one row per narrated sentence (step = rows shown). */
+export type Card =
+  | { kind: 'cold' }
+  | { kind: 'chapter'; n: number; title: string }
+  | { kind: 'how'; step: number }
+  | { kind: 'closing'; step: number }
+  | null
 
 export class Aborted extends Error {}
 
@@ -46,21 +52,22 @@ export interface StageApi {
 
 /** Deadlines in ms from PLAY (show time). */
 export const CAP = {
-  cold: 9_000,
-  mara: 27_000,
-  warning: 45_000,
-  dark: 68_000,
-  truth: 92_000,
-  trust: 105_000,
-  closing: 108_000,
-  end: 114_000,
+  cold: 14_000,
+  mara: 40_000,
+  warning: 72_000,
+  dark: 125_000,
+  truth: 152_000,
+  left: 170_000,
+  trust: 180_000,
+  how: 182_000,
+  closing: 183_000,
+  end: 189_000,
 }
 export const CHAPTER_CARD_MS = 1_500
 /** How long THE WARNING's countdown runs on screen (the sim clock is stepped faster to fit). */
 export const COUNTDOWN_MS = 8_000
 /** Camera zoom on a pointed detail (as far as it fits). */
 const ZOOM = 2.3
-export const CLOSING_CARD_MS = 5_000
 
 const raw = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -115,7 +122,7 @@ function click(el: Element | null): boolean {
   return true
 }
 
-const ALL: FrameName[] = ['mara', 'ilan', 'board', 'sim', 'warden']
+const ALL: FrameName[] = ['mara', 'ilan', 'board', 'sim', 'warden', 'terminal']
 
 /**
  * Reset every framed page and wait until the demo's starting state is ready: fresh world,
@@ -137,7 +144,8 @@ export async function prepareWorld(frame: StageApi['frame'], isAlive: () => bool
       find(d('ilan'), 'button', /^I'm okay$/) &&
       /40 \/ 40 levels/i.test(textOf(d('board')?.body ?? null)) &&
       /Active · vouched by 3 of L38/i.test(textOf(d('warden')?.body ?? null)) &&
-      find(d('sim'), 'button', /^Step \+1h$/)
+      find(d('sim'), 'button', /^Step \+1h$/) &&
+      find(d('terminal'), 'button', /^Next$/)
     )
       return true
     await raw(150)
@@ -219,75 +227,88 @@ export async function runShow(api: StageApi, clock: Clock, prepared: boolean) {
     }
     const ilanFamily = () => section(d('ilan'), /^Family/)
 
-    // ── Cold open: black, line 1 ──────────────────────────────────────────────────────────────
+    const cue = (ms: number, deadline: number) => until(() => api.director.lineTime() >= ms, deadline)
+    const nar = (n: number, live?: string) => api.director.narrate(n, live)
+    const spokenLog = () => (window as unknown as { __stageSpoken?: string[] }).__stageSpoken ?? []
+    const top = (n: FrameName) => d(n)?.defaultView?.scrollTo(0, 0)
+
+    // ── 01 · Cold open (black) ────────────────────────────────────────────────────────────────
     api.camera('none')
     api.setCard({ kind: 'cold' })
     api.audio.startDrone()
     api.check('setup: fresh world, 40/40 levels, warden vouched by 3', prepared || (await prepareWorld(api.frame, () => clock.gen === gen)))
     alive()
-    api.setBeat('', 'Level 38. Two kilometers underground.')
-    const n1 = api.director.narrate(1)
-    await sleep(3_000)
+    api.setBeat('', '2087. Two billion people, underground.')
+    const n1 = nar(1)
+    await cue(5_400, CAP.cold)
+    api.setBeat('', 'The deeper you live, the sooner power fails.')
     await settle(n1, CAP.cold)
 
-    // ── Mara alone: one tap ───────────────────────────────────────────────────────────────────
+    // ── 02 · Mara's phone: one tap; Ilan sees it ──────────────────────────────────────────────
     api.setCard(null)
-    d('mara')?.defaultView?.scrollTo(0, 0)
-    d('ilan')?.defaultView?.scrollTo(0, 0)
+    top('mara')
+    top('ilan')
     api.camera('mara')
-    api.setBeat('', "This is Mara. One tap: I'm okay.")
-    const n2 = api.director.narrate(2)
-    await sleep(900)
+    api.setBeat('', 'This is Mara, on Level 38.')
+    const n2 = nar(2)
     const ok = find(d('mara'), 'button', /^I'm okay$/)
+    await cue(2_700, CAP.mara - 12_000)
+    api.setBeat('', 'Lantern: run by residents, not the Directorate.')
     api.point('mara', ok, ZOOM)
-    await sleep(2_600)
+    await cue(7_300, CAP.mara - 10_000)
+    api.setBeat('', "One tap a day: I'm okay.")
+    await cue(8_600, CAP.mara - 9_000)
     click(ok)
     await raw(250)
     const send = find(d('mara'), 'button', /^Send now/)
     api.point('mara', send, ZOOM)
-    await sleep(900)
+    await sleep(700)
     click(send)
-    await raw(300)
-    api.point('mara', find(d('mara'), 'section[aria-label="Today\'s check-in"]'), 1.8)
-    const maraOk = await event(() => find(ilanFamily(), 'li', /^Mara · L38\s*●\s*Okay today/i), CAP.mara - 5_000)
+    const maraOk = await event(() => find(ilanFamily(), 'li', /^Mara · L38\s*●\s*Okay today/i), CAP.mara - 6_000)
     api.check("check-ins: Ilan sees Mara 'okay today'", !!maraOk)
-    await settle(n2, CAP.mara - 4_000)
-
-    // Ilan, briefly: "Mara · okay".
+    await settle(n2, CAP.mara - 5_000)
     api.camera('ilan')
     show(maraOk)
     api.setBeat('', 'Twenty-six levels up, Ilan sees it.')
-    await sleep(700)
+    await sleep(600)
     api.point('ilan', maraOk, ZOOM)
-    // Silently: Ilan turns on spoken alerts (so his phone can read Mara's message out later).
+    // Silently: Ilan turns on spoken alerts (so his phone reads Mara's message out later).
     click(find(d('ilan'), 'button', /Spoken alerts: off/))
-    await sleep(2_300)
+    await sleep(2_800)
 
-    // ── 1 · THE WARNING ───────────────────────────────────────────────────────────────────────
-    api.camera('mara')
-    d('mara')?.defaultView?.scrollTo(0, 0)
+    // ── 1 · THE WARNING · 03: power meter → warning → countdown ───────────────────────────────
     await chapter(1, 'The warning')
-    api.director.hold(true) // phones stay quiet until after the blackout's silence
-    const n3 = api.director.narrate(3)
+    api.director.hold(true) // the phones stay quiet until Mara's phone speaks in the dark
+    top('mara')
+    api.camera('mara')
     click(find(d('sim'), 'button', /^Power surge$/))
-    api.setBeat('The warning', 'Lantern sees the blackout coming.')
+    const n3 = nar(3)
+    const powerTile = () => d('mara')?.querySelector('[role="group"][aria-label^="Power:"]') ?? null
+    api.setBeat('The warning', "Each phone reads its level's power meter.")
+    await sleep(500)
+    api.point('mara', powerTile(), ZOOM)
     const hasWarning = () => !!find(d('mara'), '[data-testid="power-warning"]')
     const isDark = () => !!d('mara')?.querySelector('.blackout-mode')
+    // The load climbs on the meter while he speaks.
     for (let i = 0; i < 12 && !hasWarning(); i++) {
       await step()
-      await sleep(650)
+      await sleep(600)
     }
+    await cue(2_950, CAP.warning - 20_000)
+    api.setBeat('The warning', "Mara's phone sees the load climbing.")
+    await cue(4_900, CAP.warning - 18_000)
     const warning = find(d('mara'), '[data-testid="power-warning"]')
     api.point('mara', warning, ZOOM)
+    api.setBeat('The warning', 'A blackout within hours.')
     api.check('warning: hours-ahead window + confidence', /Blackout risk · \d+–\d+ hours.*confidence/i.test(textOf(warning)), textOf(warning).slice(0, 70))
-    await sleep(2_200)
+    await cue(6_950, CAP.warning - 16_000)
     api.setCountdown(true)
     await raw(100)
     api.point('stage', document.querySelector('[data-stage="countdown"]'))
-    api.setBeat('The warning', 'Nobody announced it. Hours of warning.')
+    api.setBeat('The warning', "The Directorate hasn't said a word.")
     let ilanWarned = false
-    // ~8 s on screen: step the sim clock as fast as needed, and stop one hour short (the lights go
-    // out under the chapter card).
+    // ~8 s on screen: step the sim clock as fast as needed, stop one hour short (the lights go out
+    // under the chapter card).
     const cdEnd = elapsed() + COUNTDOWN_MS
     for (let i = 0; i < 24 && !isDark(); i++) {
       const left = api.countdown() ?? 12
@@ -299,60 +320,88 @@ export async function runShow(api: StageApi, clock: Clock, prepared: boolean) {
     await settle(n3, CAP.warning)
     api.check('warning reaches Ilan over the mesh', ilanWarned || /L38 blackout/i.test(textOf(ilanFamily())))
 
-    // ── 2 · THE DARK ──────────────────────────────────────────────────────────────────────────
+    // ── 2 · THE DARK · 04 black + alarm, dark screen ──────────────────────────────────────────
     await chapter(2, 'The dark')
     api.setCountdown(false)
+    // SIMULATED: speech recognition. Mara's phone "hears" what she says in the dark through the app's
+    // test hook (read when the dark screen's voice control mounts); the rest of the flow is the app's.
+    const maraWin = d('mara')?.defaultView as (Window & { __lanternFakeVoice?: { transcript: string } }) | null | undefined
+    if (maraWin) maraWin.__lanternFakeVoice = { transcript: 'power out' }
     api.audio.cut()
     api.setBlack(true)
-    // The feeder trips in the dark (never capped: the story needs the blackout itself).
     for (let i = 0; i < 8 && !isDark(); i++) await step()
     const dark = await event(isDark, elapsed(), 6_000)
     api.check('blackout: Mara switches to blackout mode', !!dark)
     await sleep(1_000)
     api.setBlack(false)
     api.audio.alarm()
+    top('mara')
     api.camera('mara')
-    d('mara')?.defaultView?.scrollTo(0, 0)
     api.point('mara', find(d('mara'), 'section[role="alert"]'), ZOOM)
-    api.setBeat('The dark', 'The lights go out. The network too.')
+    api.setBeat('The dark', 'The lights go out. So does the network.')
     await sleep(900)
     api.audio.afterBlackout()
-    const n4 = api.director.narrate(4)
-    api.director.hold(false) // Mara's own spoken alert follows, ducked
-    await settle(n4, CAP.dark - 16_000)
+    const n4 = nar(4)
+    await settle(n4, CAP.dark - 40_000)
+
+    // 05 · her phone speaks the alert; she answers out loud.
+    const n5 = nar(5)
+    api.setBeat('The dark', "In the dark, she needn't read the screen.")
+    await cue(3_650, CAP.dark - 36_000)
+    api.setBeat('The dark', 'Lantern speaks the alert. She answers aloud.')
+    await settle(n5, CAP.dark - 33_000)
+    api.director.hold(false, true) // Mara's phone: "The power is out on Level 38."
+    api.point('mara', find(d('mara'), '[data-testid="alert-caption"]'), ZOOM)
+    await raw(300)
+    await quiet(CAP.dark - 29_000)
     api.check(
       'blackout alert spoken (phone)',
-      (window as unknown as { __stageSpoken?: string[] }).__stageSpoken?.some((t) => t.startsWith('The power is out on Level 38')) ?? false,
+      spokenLog().some((t) => t.startsWith('The power is out on Level 38')),
     )
-    const powerOut = find(d('mara'), 'button', /^Power out$/)
-    show(powerOut)
+    const holdBtn = find(d('mara'), 'button', /Hold to speak/i)
+    show(holdBtn)
     await sleep(500)
-    api.point('mara', powerOut, ZOOM)
-    api.setBeat('The dark', 'Mara sends: power out.')
-    await quiet(CAP.dark - 13_000)
-    await sleep(800)
-    click(powerOut)
-    await sleep(700)
+    api.point('mara', holdBtn, ZOOM)
+    api.setBeat('The dark', 'She answers: “Power out.”')
+    await sleep(1_200)
+    const key = (type: string) => holdBtn?.dispatchEvent(new ((maraWin as unknown as typeof globalThis | null)?.KeyboardEvent ?? KeyboardEvent)(type, { key: ' ', bubbles: true }))
+    key('keydown') // ● Listening…
+    await sleep(1_600)
+    key('keyup')
+    const voice = () => d('mara')?.querySelector('section[aria-label="Voice check-in"]') ?? null
+    const heard = await event(() => (/Heard\s*“power out”/i.test(textOf(voice())) ? voice()!.querySelector('[aria-live] > div') : null), CAP.dark - 22_000)
+    api.point('mara', heard, ZOOM)
+    api.check('voice: HEARD "power out" → ◆ POWER OUT → CONFIRM · SEND', /Heard\s*“power out”\s*→\s*◆\s*Power out\s*Confirm · send/i.test(textOf(heard)), textOf(heard).slice(0, 60))
+    await sleep(2_400)
+    const confirm = find(heard, 'button', /^Confirm · send$/)
+    api.point('mara', confirm, ZOOM)
+    await sleep(1_100)
+    click(confirm)
+    await sleep(500)
 
-    // Cut to Ilan receiving it.
-    const n5 = api.director.narrate(5)
+    // 06 · the message reaches Ilan (his phone reads it out), phone to phone.
     api.camera('ilan')
     api.point(null, null)
-    const msg = await event(() => find(d('ilan'), 'li', /Power is out here\./), CAP.dark - 9_000)
+    const msg = await event(() => find(d('ilan'), 'li', /Power is out here\./), CAP.dark - 16_000)
     show(msg)
     await sleep(500)
     api.point('ilan', msg, ZOOM)
-    api.setBeat('The dark', 'Phone to phone, it reaches Ilan.')
-    await settle(n5, CAP.dark)
-    await quiet(CAP.dark)
-    const spoken = (window as unknown as { __stageSpoken?: string[] }).__stageSpoken ?? []
+    api.setBeat('The dark', 'Ilan hears it: “Power is out here.”')
+    await event(() => spokenLog().includes('Message from Mara. Power is out here.'), CAP.dark - 14_000)
+    await raw(200)
+    await quiet(CAP.dark - 12_000)
+    const n6 = nar(6)
+    api.setBeat('The dark', 'No network: phone to phone, neighbor to neighbor.')
+    await cue(4_600, CAP.dark - 6_000)
+    api.setBeat('The dark', 'All the way to Ilan, 26 levels up.')
+    await settle(n6, CAP.dark)
     api.check(
       "message reaches Ilan 'passed along by 1 phone' and is read aloud",
-      /passed along by 1 phone/i.test(textOf(msg)) && spoken.includes('Message from Mara. Power is out here.'),
+      /passed along by 1 phone/i.test(textOf(msg)) && spokenLog().includes('Message from Mara. Power is out here.'),
       textOf(msg).slice(0, 80),
     )
 
-    // ── 3 · THE TRUTH ─────────────────────────────────────────────────────────────────────────
+    // ── 3 · THE TRUTH · 07 the L38 card, 08 the allocation ────────────────────────────────────
     // Fever spreads while the chapter card is up, so the board is ready when we cut to it.
     click(find(d('sim'), 'button', /Symptom spike/))
     const spreading = (async () => {
@@ -370,95 +419,177 @@ export async function runShow(api: StageApi, clock: Clock, prepared: boolean) {
     const l38 = await event(() => {
       const f = figures(l38Card())
       return f.lantern && f.official && /^\d+\.\d%$/.test(textOf(f.lantern)) && /^\d+\.\d%$/.test(textOf(f.official)) ? l38Card() : null
-    }, CAP.truth - 20_000)
+    }, CAP.truth - 30_000)
     const fig = figures(l38)
     const lanShown = textOf(fig.lantern)
     const offShown = textOf(fig.official)
     show(l38)
     api.camera('board')
     const spokenTruth = truthLine(lanShown, offShown)
-    const n6 = api.director.narrate(6, spokenTruth)
-    await sleep(700)
+    const n7 = nar(7, spokenTruth)
+    await sleep(600)
     api.point('board', [fig.tag, fig.lantern?.parentElement ?? null, fig.official?.parentElement ?? null], ZOOM)
+    api.setBeat('The truth', 'Every check-in counts, anonymously, in public.')
+    api.check('board: L38 row in DANGER', !!l38 && /Level 38 · outbreak/i.test(textOf(l38)))
+    api.check('outbreak: Lantern vs lower official figure', parseFloat(lanShown) > 2 * parseFloat(offShown), `${lanShown || '?'} vs ${offShown || '?'}`)
+    await cue(4_450, CAP.truth - 20_000)
     const caption = `Level 38: ${lanShown} sick. Directorate says ${offShown}.`
     api.setBeat('The truth', caption)
-    api.check('board: L38 row in DANGER', !!l38 && /Level 38 · outbreak/i.test(textOf(l38)))
-    api.check(
-      'outbreak: Lantern vs lower official figure',
-      parseFloat(lanShown) > 2 * parseFloat(offShown),
-      `${lanShown || '?'} vs ${offShown || '?'}`,
-    )
-    await sleep(1_200)
+    await sleep(300)
     // Same numbers everywhere: caption = what the L38 card shows now = what the narrator says.
     const now = figures(l38Card())
     const capNums = caption.match(/\d+\.\d%/g) ?? []
-    const say = (v: string) => v.replace(/\.0%$/, '%').replace('%', ' percent')
+    const said = (v: string) => v.replace(/\.0%$/, '%').replace('%', '')
     api.check(
       "truth: caption's L38 percentages = the L38 card on screen (and the narration)",
       capNums.length === 2 &&
         capNums[0] === textOf(now.lantern) &&
         capNums[1] === textOf(now.official) &&
-        spokenTruth.includes(say(capNums[0])) &&
-        spokenTruth.includes(say(capNums[1])),
-      `caption ${capNums.join(' / ')} · card ${textOf(now.lantern)} / ${textOf(now.official)} · said "${spokenTruth.slice(28)}"`,
+        spokenTruth.includes(`report ${said(capNums[0])} percent sick`) &&
+        spokenTruth.includes(`says ${said(capNums[1])}.`),
+      `caption ${capNums.join(' / ')} · card ${textOf(now.lantern)} / ${textOf(now.official)} · said "${spokenTruth.slice(60)}"`,
     )
-    await settle(n6, CAP.truth - 11_000)
+    await settle(n7, CAP.truth - 13_000)
 
+    const priorities = findDeepest(board()?.body ?? null, 'div', /Priorities:.*Voted by \d+ of 40 levels/i)
     const rec = find(board(), 'section[aria-labelledby="rec-h"]')
     const dir = find(board(), 'section[aria-labelledby="dir-h"]')
-    const grid = rec?.parentElement ?? rec
-    show(grid)
-    const n7 = api.director.narrate(7)
-    await sleep(700)
+    show(priorities)
+    const n8 = nar(8)
+    await sleep(500)
+    api.point('board', priorities, 2)
+    api.setBeat('The truth', 'The levels voted: air comes first.')
+    api.check('allocation: priorities voted by 40 of 40 levels', /1 air.*Voted by 40 of 40 levels/i.test(textOf(priorities)), textOf(priorities).slice(0, 80))
+    await cue(3_000, CAP.truth - 8_000)
     api.point('board', find(rec, 'li', /Level 38 air pumps/) ?? rec, 2)
-    api.setBeat('The truth', "Air for Level 38. Power went upstairs.")
+    api.setBeat('The truth', "Spare power: Level 38's air pumps.")
     api.check('allocation: Level 38 air pumps first', /Level 38 air pumps/i.test(textOf(rec)))
-    api.check('allocation: Directorate → Levels 1–3', /Levels 1–3 administrative/i.test(textOf(dir)))
-    await sleep(3_500)
+    await cue(6_950, CAP.truth - 4_000)
     api.point('board', find(dir, 'li', /Levels 1–3 administrative/) ?? dir, 2)
-    await settle(n7, CAP.truth)
+    api.setBeat('The truth', 'The Directorate sent it to the top.')
+    api.check('allocation: Directorate → Levels 1–3', /Levels 1–3 administrative/i.test(textOf(dir)))
+    await settle(n8, CAP.truth)
+    await sleep(800)
 
-    // ── 4 · THE TRUST ─────────────────────────────────────────────────────────────────────────
+    // ── 4 · NO ONE LEFT BEHIND · 09 terminal, then the warden ─────────────────────────────────
+    await chapter(4, 'No one left behind')
+    const term = () => d('terminal')
+    top('terminal')
+    api.camera('terminal')
+    const n9 = nar(9)
+    api.setBeat('No one left behind', 'Not everyone has a phone.')
+    await sleep(700)
+    api.point('terminal', term()?.querySelector('output') ?? null, 1.6)
+    await cue(2_200, CAP.left - 26_000)
+    api.setBeat('No one left behind', 'A shared terminal on every level.')
+    const tap = async (re: RegExp, hold = 650) => {
+      const b = find(term(), 'button', re)
+      api.point('terminal', b, 1.6)
+      await sleep(hold)
+      click(b)
+      await sleep(250)
+    }
+    for (const k of ['2', '0', '7']) await tap(new RegExp(`^${k}$`), 350)
+    await tap(/^Next$/)
+    await tap(/^I'm okay$/)
+    await tap(/^Okay$/)
+    await tap(/^7 h \+$/)
+    await tap(/^None ▸$/)
+    await tap(/^Yes$/)
+    const tdone = await event(() => findDeepest(term()?.body ?? null, 'span', /Checked in · okay/i), CAP.left - 14_000)
+    api.point('terminal', tdone, ZOOM)
+    api.check('terminal: unit 38-207 checked in by unit number', !!tdone && /38-207/.test(textOf(term()?.body ?? null)))
+    await settle(n9, CAP.left - 12_000)
+    await sleep(1_200)
+
+    top('warden')
+    api.camera('warden')
+    api.setBeat('No one left behind', 'Or a volunteer warden checks them in.')
+    const brandt = () => find(d('warden'), 'li', /Mr\. Brandt/)
+    show(brandt())
+    await sleep(700)
+    const checkIn = find(brandt(), 'button', /^Check in$/)
+    api.point('warden', checkIn, ZOOM)
+    await sleep(1_400)
+    click(checkIn)
+    await sleep(400)
+    const sendB = find(brandt(), 'button', /^Send$/)
+    api.point('warden', sendB, ZOOM)
+    await sleep(1_100)
+    click(sendB)
+    const viaWarden = await event(() => (/via warden/i.test(textOf(brandt())) ? brandt() : null), CAP.left - 2_000)
+    api.point('warden', viaWarden, 1.8)
+    api.check('warden checks in Mr. Brandt (no phone)', !!viaWarden)
+    await sleep(2_200)
+
+    // ── 5 · THE TRUST · 10 vouched warden confirms; an impostor denies, rejected ───────────────
+    await chapter(5, 'The trust')
+    top('warden')
+    const vouched = findDeepest(d('warden')?.body ?? null, 'span', /Active · vouched by 3 of L38/i)
+    api.point('warden', vouched, ZOOM)
+    const n10 = nar(10)
+    api.setBeat('The trust', 'Every warden: vouched for by three neighbors.')
+    await sleep(1_300)
     const confirmBtn = await event(() => {
       const b = find<HTMLButtonElement>(d('warden'), 'button', /^Confirm outbreak$/)
       return b && !b.disabled ? b : null
-    }, CAP.trust - 12_000)
+    }, CAP.trust - 20_000)
     click(confirmBtn)
-    await chapter(4, 'The trust')
     const badge = await event(
-      () => findDeepest(find(section(board(), /^Outbreak watch$/), 'li', /Level 38 · outbreak/i), 'span', /✓ confirmed by warden W-38/i),
-      CAP.trust - 9_000,
+      () => findDeepest(l38Card(), 'span', /✓ confirmed by warden W-38/i),
+      CAP.trust - 18_000,
     )
+    api.camera('board')
     show(badge)
-    const n8 = api.director.narrate(8)
-    await sleep(700)
+    await sleep(500)
     api.point('board', badge, ZOOM)
-    api.setBeat('The trust', 'Vouched by neighbors, the warden confirms.')
+    const badgeAt = elapsed()
     api.check('vouched warden confirmation shown on the board', !!badge)
-    await sleep(4_000)
-    click(find(d('sim'), 'button', /Impostor warden confirms outbreak on L38/))
+    await cue(3_400, CAP.trust - 14_000)
+    api.setBeat('The trust', 'An impostor poses as one to deny it.')
+    // ~4 s on the badge, then the impostor's dispute lands as he says "to deny the outbreak".
+    await sleep(Math.max(0, 4_000 - (elapsed() - badgeAt)))
+    click(find(d('sim'), 'button', /Impostor warden disputes outbreak on L38/))
     const rejected = await event(
-      () => findDeepest(board()?.body ?? null, 'li span', /W-38-WAR confirms outbreak · unverified warden, rejected/i),
-      CAP.trust - 4_000,
+      () => findDeepest(board()?.body ?? null, 'li span', /W-38-WAR disputes outbreak · unverified warden, rejected/i),
+      CAP.trust - 10_000,
     )
     show(rejected)
-    await sleep(600)
+    await sleep(500)
     api.point('board', rejected, ZOOM)
-    api.setBeat('The trust', 'An impostor tries. Rejected.')
-    api.check('impostor rejected (unverified warden)', !!rejected)
-    await sleep(4_000)
-    await settle(n8, CAP.trust)
+    const rejectedAt = elapsed()
+    api.check('impostor dispute rejected (unverified warden)', !!rejected, textOf(rejected))
+    await cue(7_050, CAP.trust - 6_000)
+    api.setBeat('The trust', 'Every phone spots the fake. Rejected.')
+    await settle(n10, CAP.trust - 4_000)
+    await sleep(Math.max(1_000, 4_000 - (elapsed() - rejectedAt))) // ≥ ~4 s on the rejection
+    api.check('outbreak stays confirmed', /Level 38 · outbreak.*✓ confirmed by warden W-38-WAR/i.test(textOf(l38Card())))
 
-    // ── Closing (5 s card), line 9 ────────────────────────────────────────────────────────────
-    const n9 = api.director.narrate(9)
-    if (clock.speed <= 1 && elapsed() > CAP.closing) api.check('closing card on time', false, `${Math.round(elapsed() / 1000)} s`)
+    // ── 11 · how it works ─────────────────────────────────────────────────────────────────────
     api.point(null, null)
     api.setBeat('', '')
     api.camera('none')
-    api.setCard({ kind: 'closing' })
-    api.audio.fadeOut(CLOSING_CARD_MS)
-    await sleep(CLOSING_CARD_MS)
-    await settle(n9, CAP.end)
+    await until(() => !api.director.narrating(), elapsed() + 3_000)
+    api.setCard({ kind: 'how', step: 1 })
+    const n11 = nar(11)
+    for (const [ms, step] of [[2_250, 2], [3_600, 3], [5_450, 4]] as const) {
+      await cue(ms, CAP.how)
+      api.setCard({ kind: 'how', step })
+    }
+    await settle(n11, CAP.how)
+    await sleep(1_000)
+
+    // ── 12 · closing ──────────────────────────────────────────────────────────────────────────
+    if (clock.speed <= 1 && elapsed() > CAP.closing) api.check('closing card on time', false, `${Math.round(elapsed() / 1000)} s`)
+    api.setCard({ kind: 'closing', step: 1 })
+    const n12 = nar(12)
+    await cue(2_100, CAP.end - 6_000)
+    api.setCard({ kind: 'closing', step: 2 })
+    await cue(4_200, CAP.end - 4_000)
+    api.setCard({ kind: 'closing', step: 3 })
+    await settle(n12, CAP.end - 2_000)
+    api.audio.fadeOut(1_800)
+    await sleep(1_800)
   } finally {
     clearInterval(ticker)
   }

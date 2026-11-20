@@ -126,11 +126,11 @@ const has = (text, needle) => text.toLowerCase().includes(needle.toLowerCase())
   check('Step 7: L38 counts include terminal + warden reports', /via terminal/i.test(det) && /via warden/i.test(det), (det.match(/Sources:[^.]*/i) || [''])[0])
 
   // Step 7b: an impostor with a valid signature but an unvouched key
-  await sim.getByRole('button', { name: 'Impostor warden confirms outbreak on L38' }).click()
+  await sim.getByRole('button', { name: 'Impostor warden disputes outbreak on L38' }).click()
   await ledger.waitForTimeout(1000)
   const heldTxt = await txt(ledger.locator('section', { hasText: 'Held back' }))
-  check('Step 7b: impostor warden confirmation rejected', /L38 · W-38-WAR confirms outbreak · unverified warden, rejected/i.test(heldTxt))
-  check('Step 7b: genuine warden confirmation still stands', /Level 38 · OUTBREAK.*confirmed by warden W-38/i.test(await txt(ledger.locator('section', { hasText: 'Outbreak watch' }).first())))
+  check('Step 7b: impostor warden dispute rejected', /L38 · W-38-WAR disputes outbreak · unverified warden, rejected/i.test(heldTxt))
+  check('Step 7b: the outbreak stays confirmed by the genuine warden', /Level 38 · OUTBREAK.*confirmed by warden W-38/i.test(await txt(ledger.locator('section', { hasText: 'Outbreak watch' }).first())))
 
   // Step 8: trust
   await sim.selectOption('select', '5')
@@ -186,12 +186,14 @@ const has = (text, needle) => text.toLowerCase().includes(needle.toLowerCase())
   const stageLog = (await st.evaluate(() => window.__stageLog)) ?? []
   const stageFails = stageLog.filter((l) => !l.ok).map((l) => l.name)
   check('Step 11: /stage autopilot finishes', await st.evaluate(() => window.__stageDone === true))
-  check(`Step 11: every autopilot beat checks out (${stageLog.length} checks)`, stageLog.length >= 14 && stageFails.length === 0, stageFails.join('; '))
+  check(`Step 11: every autopilot beat checks out (${stageLog.length} checks)`, stageLog.length >= 19 && stageFails.length === 0, stageFails.join('; '))
   const truth = stageLog.find((l) => /caption's L38 percentages/.test(l.name))
   check("Step 11: THE TRUTH caption's L38 percentages equal the L38 card on screen", !!truth?.ok, truth?.detail)
   const stageSpoken = (await st.evaluate(() => window.__stageSpoken)) ?? []
   check('Step 11: stage speaks the blackout and the message', stageSpoken.some((t) => t.startsWith('The power is out on Level 38')) && stageSpoken.includes('Message from Mara. Power is out here.'))
-  check('Step 11: closing card shown', has(await txt(st.locator('body')), 'They can never turn it off.'))
+  for (const name of ['voice: HEARD "power out"', 'terminal: unit 38-207', 'warden checks in Mr. Brandt', 'impostor dispute rejected', 'outbreak stays confirmed'])
+    check(`Step 11: stage beat · ${name}`, !!stageLog.find((l) => l.name.startsWith(name) && l.ok))
+  check('Step 11: closing card shown', has(await txt(st.locator('body')), 'Lantern keeps the Hollow connected, even in the dark.'))
   await stageCtx.close()
 
   check('No page errors', errs.length === 0, errs.slice(0, 3).join(' / '))

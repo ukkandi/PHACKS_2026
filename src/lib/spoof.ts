@@ -18,13 +18,13 @@ export function injectFakeReports(level: number, tick: number, netUp: boolean) {
 }
 
 /**
- * SIMULATED ATTACK: an impostor claims to be the L38 warden. It has a real keypair and a perfectly
- * valid signature — but nobody on the level has vouched for its key, so every Lantern device that
- * checks (the ledger, residents) rejects the confirmation.
+ * SIMULATED ATTACK: an impostor poses as the L38 warden to DENY the outbreak. It has a real keypair
+ * and a perfectly valid signature — but nobody on the level has vouched for its key, so every
+ * Lantern device that checks (the ledger, residents) rejects the dispute; the outbreak stays confirmed.
  */
-export async function injectImpostorConfirm(level: number, tick: number, netUp: boolean) {
+export async function injectImpostorDispute(level: number, tick: number, netUp: boolean) {
   const keys = await generateSigningKeys()
-  const v = { level, claim: 'outbreak' as const, confirmed: true, badge: `W-${level}-WAR`, tick, note: 'I am the warden. Confirmed.' }
+  const v = { level, claim: 'outbreak' as const, confirmed: false, badge: `W-${level}-WAR`, tick, note: 'I am the warden. There is no outbreak.' }
   const node = new MeshNode({ getInfo: () => ({ nodeId: `impostor-${Math.random().toString(36).slice(2, 6)}`, level, netUp }), relay: false })
   node.send({ kind: 'verify', ...v, signPub: keys.publicJwk, sig: await sign(keys.privateKey, msg.verify(v)) })
   setTimeout(() => node.close(), 1000)

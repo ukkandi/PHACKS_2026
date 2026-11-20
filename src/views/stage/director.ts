@@ -6,24 +6,28 @@
 //     long one is then trimmed to its first sentence. The stage also ducks its drone under him.
 
 /**
- * Line 6, built from the figures on Level 38's board card ("22.0%", "6.4%"), so the narrator says
- * exactly what the screen shows. NARRATION[6] is the seeded demo's values (what a recording says).
+ * Line 7, built from the figures on Level 38's board card ("22.0%", "6.4%"), so the narrator says
+ * exactly what the screen shows. NARRATION[7] is the seeded demo's values (what the recording says).
  */
 export function truthLine(lantern: string, official: string): string {
-  const say = (v: string) => v.replace(/\.0%$/, '%').replace('%', ' percent')
-  return `And every check-in adds up. ${say(lantern)} of Level 38 is sick. The Directorate says ${say(official)}.`
+  const num = (v: string) => v.replace(/\.0%$/, '%').replace('%', '')
+  return `Every check-in also counts, anonymously, on a public board. Residents report ${num(lantern)} percent sick on Level 38. The Directorate says ${num(official)}.`
 }
 
+/** The script, in play order (public/narration/01–12 are recordings of exactly these). */
 export const NARRATION: Record<number, string> = {
-  1: 'Level 38. Two kilometers underground. Down here, the lights go out first.',
-  2: "This is Mara. Every morning she taps one button, so her grandfather, twenty-six levels up, knows she's okay.",
-  3: "Today, Lantern sees something the Directorate hasn't announced. Level 38's power is failing.",
-  4: 'The lights go out. The network goes with them.',
-  5: "But Mara's message still finds its way. Phone to phone, neighbor to neighbor, all the way to Ilan.",
-  6: truthLine('22.0%', '6.4%'),
-  7: "The spare power belongs to Level 38's air pumps. The Directorate sent it to the top. Now everyone can see.",
-  8: 'A warden her neighbors vouched for confirms it. An impostor tries. Rejected.',
-  9: 'No accounts. No admin. No off switch. Lantern works in the dark.',
+  1: '2087. Two billion people live underground in the Hollow. The deeper you live, the sooner the power fails, and the less anyone tells you.',
+  2: "This is Mara, on Level 38. She uses Lantern, an app run by residents, not by the Directorate. One tap a day tells her family she's okay.",
+  3: "Each phone reads its own level's power meter. Mara's sees the load climbing: a blackout within hours. The Directorate hasn't said a word.",
+  4: "The lights go out. So does the Directorate's network.",
+  5: "In the dark, Mara doesn't need to read the screen. Lantern speaks the alert, and she answers out loud.",
+  6: 'With no network, Lantern passes her message phone to phone, neighbor to neighbor, until it reaches her grandfather Ilan, twenty-six levels up.',
+  7: truthLine('22.0%', '6.4%'),
+  8: "The levels voted that air comes first. Lantern says spare power belongs to Level 38's air pumps. The Directorate sent it to the top.",
+  9: 'Not everyone has a phone. A shared terminal on every level, or a volunteer warden, checks them in.',
+  10: 'Every warden is vouched for by three of their neighbors. So when an impostor poses as one to deny the outbreak, every phone spots the fake, and rejects it.',
+  11: 'One check-in a day. It stays on your phone. It travels neighbor to neighbor. Only anonymous counts are ever shared.',
+  12: 'No accounts to seize. No admin to switch it off. Lantern keeps the Hollow connected, even in the dark.',
 }
 
 /** Optional spoken overrides (none needed for the current lines). */
@@ -64,6 +68,7 @@ export class Director {
   private audios = new Set<HTMLAudioElement>()
   private startedAt = 0
   private lastEnd = -Infinity
+  private voiceStartedAt = 0
   /** >1 in tests: nothing is spoken, lines just pass quickly. */
   speed = 1
   /** Told when the narrator starts and stops (the stage ducks its sound under it). */
@@ -139,6 +144,17 @@ export class Director {
 
   narrating(): boolean {
     return this.audios.size > 0 || this.busy === 'narrator' || this.queue.some((i) => i.kind === 'narrator')
+  }
+
+  /**
+   * How far into the narrator's current line we are, in ms (for cueing visuals to its sentences).
+   * Infinity when no line is playing (so cues never wait on a finished or skipped line).
+   */
+  lineTime(): number {
+    for (const a of this.audios) if (!a.paused || a.currentTime > 0) return a.currentTime * 1000
+    if (this.audios.size) return 0 // loading / waiting for its breath
+    if (this.busy === 'narrator') return performance.now() - this.voiceStartedAt
+    return this.queue.some((q) => q.kind === 'narrator') ? 0 : Infinity
   }
 
   speaking(): boolean {
@@ -221,7 +237,7 @@ export class Director {
   }
 
   /** Hold phone speech (e.g. until after the blackout's second of silence); release plays it. The narrator still speaks. */
-  hold(on: boolean) {
+  hold(on: boolean, brief = false) {
     this.held = on
     if (!on) {
       const lines = this.heldLines
@@ -230,7 +246,7 @@ export class Director {
         // already logged when it arrived
         if (this.speed > 1) return
         const ducked = this.narrating()
-        const line = ducked && t.length > 60 ? (t.match(/^.*?[.!?](\s|$)/)?.[0].trim() ?? t) : t
+        const line = (ducked || brief) && t.length > 60 ? (t.match(/^.*?[.!?](\s|$)/)?.[0].trim() ?? t) : t
         this.queue.push({ kind: 'phone', text: line, volume: ducked ? 0.6 : 0.8, done: () => {} })
       })
       this.pump()
@@ -258,6 +274,7 @@ export class Director {
 
   private utter(item: Item, after?: () => void) {
     const u = new SpeechSynthesisUtterance(item.text)
+    if (item.kind === 'narrator') this.voiceStartedAt = performance.now()
     u.lang = 'en-US'
     if (item.kind === 'narrator') {
       if (this.narratorVoice) u.voice = this.narratorVoice
